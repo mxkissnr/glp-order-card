@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.3.4] – 2026-05-25
+### Fixed
+- Card received 503 from HA Supervisor on all `/api/orders/*` calls: HA requires an active ingress session cookie for XHR requests made from a Lovelace card (outside the ingress iframe); card now calls `POST /api/hassio/ingress/session` before requests, throttled to once per 30 s; closes #7
+
 ## [1.3.3] – 2026-05-25
 ### Fixed
 - Card showed "Orders are currently paused" permanently even after the barista re-enabled orders in the backend: `_loadStatus()` now re-fetches `GET /api/orders/settings` on every 10 s poll so barista toggle changes are picked up without a page reload; closes #6
