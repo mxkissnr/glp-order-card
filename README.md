@@ -32,10 +32,16 @@
 
 ## Configuration
 
+Minimal — zero config needed in a standard HA setup:
 ```yaml
 type: custom:glp-order-card
-glp_url: http://homeassistant.local:8099   # required — direct GLP port URL
-switch_entity: switch.espresso_plug        # optional — hides order form when machine is off
+```
+
+Full config (only needed for direct/external access):
+```yaml
+type: custom:glp-order-card
+glp_url: http://homeassistant.local:8099   # optional — direct port URL (auto-detected via ingress)
+switch_entity: switch.espresso_plug        # optional — auto-detected from GLP integration sensor
 title: Bestellen                           # optional — card header title
 ```
 
@@ -43,8 +49,8 @@ title: Bestellen                           # optional — card header title
 
 | Option | Description | Default |
 |---|---|---|
-| `glp_url` | URL of the GLP add-on (port 8099 — NOT the ingress URL) | *(required)* |
-| `switch_entity` | HA switch entity for the machine — card shows "machine off" when off | *(none)* |
+| `glp_url` | URL of the GLP add-on (port 8099). Only needed when accessing from outside HA or if auto-detection fails. | *(auto via ingress)* |
+| `switch_entity` | HA switch entity for the machine. Auto-detected from the `machine_status` sensor attribute if the GLP integration is installed. | *(auto)* |
 | `title` | Card header title | `Bestellen` / `Order` (auto-detected language) |
 
 ## How it works

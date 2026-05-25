@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.0.0';
+const GLP_ORDER_CARD_VERSION = '1.1.0';
 
 function _esc(s) {
   if (s == null) return '';
@@ -153,9 +153,21 @@ class GlpOrderCard extends HTMLElement {
   }
 
   setConfig(config) {
-    if (!config.glp_url) throw new Error('glp_url is required');
     this._config = { title: null, switch_entity: null, ...config };
-    this._base = _safeUrl(config.glp_url.replace(/\/$/, ''));
+  }
+
+  _getBase() {
+    const url = this._config?.glp_url;
+    if (url) return _safeUrl(url.replace(/\/$/, ''));
+    // Auto-detect: card runs inside HA browser, use ingress path (no token needed)
+    return window.location.origin + '/api/hassio_ingress/gaggiuino_local_profiler';
+  }
+
+  _getSwitchEntity() {
+    if (this._config?.switch_entity) return this._config.switch_entity;
+    if (!this._hass) return null;
+    const found = Object.keys(this._hass.states).find(id => id.endsWith('_machine_status'));
+    return found ? (this._hass.states[found]?.attributes?.switch_entity || null) : null;
   }
 
   set hass(hass) {
@@ -175,10 +187,13 @@ class GlpOrderCard extends HTMLElement {
     if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = null; }
   }
 
+  _useIngress() { return !this._config?.glp_url; }
+
   async _ensureToken() {
+    if (this._useIngress()) return null; // ingress bypasses token check
     if (this._token) return this._token;
     try {
-      const d = await fetch(`${this._base}/api/status`).then(r => r.json());
+      const d = await fetch(`${this._getBase()}/api/status`).then(r => r.json());
       this._token = d.apiToken || null;
     } catch {}
     return this._token;
@@ -187,7 +202,7 @@ class GlpOrderCard extends HTMLElement {
   async _fetch(path, opts = {}) {
     const token = await this._ensureToken();
     if (token) opts = { ...opts, headers: { ...opts.headers, 'X-GLP-Token': token } };
-    return fetch(`${this._base}/${path}`, opts);
+    return fetch(`${this._getBase()}/${path}`, opts);
   }
 
   async _load() {
@@ -213,7 +228,7 @@ class GlpOrderCard extends HTMLElement {
   }
 
   _machineOff() {
-    const entity = this._config.switch_entity;
+    const entity = this._getSwitchEntity();
     if (!entity || !this._hass) return false;
     const s = this._hass.states[entity];
     return s?.state === 'off' || s?.state === 'unavailable';
@@ -362,7 +377,7 @@ class GlpOrderCard extends HTMLElement {
   getCardSize() { return 3; }
 
   static getConfigElement() { return document.createElement('glp-order-card-editor'); }
-  static getStubConfig()    { return { glp_url: 'http://homeassistant.local:8099' }; }
+  static getStubConfig()    { return {}; }
 }
 
 customElements.define('glp-order-card', GlpOrderCard);
