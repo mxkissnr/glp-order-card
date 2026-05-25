@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.3.0';
+const GLP_ORDER_CARD_VERSION = '1.3.1';
 
 function _esc(s) {
   if (s == null) return '';
@@ -138,6 +138,7 @@ const STRINGS = {
     decline_reason: (r) => `Grund: ${r}`,
     new_order: '+ Neue Bestellung',
     loading: 'Lade …',
+    no_menu: 'Noch kein Menü konfiguriert',
   },
   en: {
     title: 'Order',
@@ -153,6 +154,7 @@ const STRINGS = {
     decline_reason: (r) => `Reason: ${r}`,
     new_order: '+ New Order',
     loading: 'Loading …',
+    no_menu: 'No menu configured yet',
   },
 };
 
@@ -233,13 +235,20 @@ class GlpOrderCard extends HTMLElement {
 
   async _load() {
     try {
-      const [menu, settings] = await Promise.all([
-        this._fetch('api/orders/menu').then(r => r.json()),
-        this._fetch('api/orders/settings').then(r => r.json()),
+      const [menuRes, settingsRes] = await Promise.all([
+        this._fetch('api/orders/menu'),
+        this._fetch('api/orders/settings'),
       ]);
-      this._menu    = Array.isArray(menu) ? menu : [];
-      this._enabled = settings?.enabled !== false;
-    } catch { this._menu = []; this._enabled = true; }
+      if (!menuRes.ok || !settingsRes.ok) {
+        this._menu    = [];
+        this._enabled = false;
+      } else {
+        const menu     = await menuRes.json();
+        const settings = await settingsRes.json();
+        this._menu    = Array.isArray(menu) ? menu : [];
+        this._enabled = settings?.enabled !== false;
+      }
+    } catch { this._menu = []; this._enabled = false; }
     await this._loadStatus();
     this._render();
   }
@@ -312,7 +321,7 @@ class GlpOrderCard extends HTMLElement {
 
   _renderOrderForm(lang) {
     if (!this._menu || this._menu.length === 0) {
-      return `<div class="loading">${_s('loading', lang)}</div>`;
+      return `<div class="loading">${_s('no_menu', lang)}</div>`;
     }
     const items = this._menu.map(m => `
       <div class="menu-item${this._selected === m.name ? ' selected' : ''}" data-item="${_esc(m.name)}">

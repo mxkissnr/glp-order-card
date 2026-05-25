@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.3.1] – 2026-05-25
+### Fixed
+- Card showed "Loading…" indefinitely when `enable_orders: false` in add-on config: `_load()` now checks HTTP status before parsing JSON; a non-2xx response (e.g. 404 when orders feature is disabled) sets `this._enabled = false` so the "paused" message is shown instead; closes #4
+- `_renderOrderForm` used the same "Loading…" string for an empty menu array (already loaded) as for the null state (not yet loaded); empty menu now shows "Noch kein Menü konfiguriert" / "No menu configured yet"
+
 ## [1.3.0] – 2026-05-25
 ### Added
 - Shot summary when order is done: fetches the shot by `order.shotId` (set by add-on v1.47.0 at completion time); shows profile name, duration, yield and a mini SVG pressure sparkline; requires GLP add-on v1.47.0+; closes #3
