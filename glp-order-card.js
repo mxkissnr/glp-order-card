@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.1.1';
+const GLP_ORDER_CARD_VERSION = '1.2.0';
 
 function _esc(s) {
   if (s == null) return '';
@@ -104,7 +104,8 @@ const STYLES = `
 const STRINGS = {
   de: {
     title: 'Bestellen',
-    off: 'Maschine aus — Bestellung nicht möglich',
+    off:    'Maschine aus — Bestellung nicht möglich',
+    paused: 'Bestellungen momentan pausiert',
     order_btn: (item) => `☕ ${item} bestellen`,
     order_btn_select: 'Getränk auswählen',
     note_ph: 'Notiz (optional) …',
@@ -118,7 +119,8 @@ const STRINGS = {
   },
   en: {
     title: 'Order',
-    off: 'Machine is off — ordering not available',
+    off:    'Machine is off — ordering not available',
+    paused: 'Orders are currently paused',
     order_btn: (item) => `☕ Order ${item}`,
     order_btn_select: 'Select a drink',
     note_ph: 'Note (optional) …',
@@ -144,6 +146,7 @@ class GlpOrderCard extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this._token     = null;
     this._menu      = null;
+    this._enabled   = true;
     this._selected  = null;
     this._activeOrder = null;
     this._pollTimer = null;
@@ -207,9 +210,13 @@ class GlpOrderCard extends HTMLElement {
 
   async _load() {
     try {
-      const menu = await this._fetch('api/orders/menu').then(r => r.json());
-      this._menu = Array.isArray(menu) ? menu : [];
-    } catch { this._menu = []; }
+      const [menu, settings] = await Promise.all([
+        this._fetch('api/orders/menu').then(r => r.json()),
+        this._fetch('api/orders/settings').then(r => r.json()),
+      ]);
+      this._menu    = Array.isArray(menu) ? menu : [];
+      this._enabled = settings?.enabled !== false;
+    } catch { this._menu = []; this._enabled = true; }
     await this._loadStatus();
     this._render();
   }
@@ -244,6 +251,8 @@ class GlpOrderCard extends HTMLElement {
 
     if (off) {
       body = `<div class="machine-off">${_s('off', lang)}</div>`;
+    } else if (!this._enabled) {
+      body = `<div class="machine-off">${_s('paused', lang)}</div>`;
     } else if (this._activeOrder) {
       body = this._renderStatus(this._activeOrder, lang);
     } else if (this._menu === null) {

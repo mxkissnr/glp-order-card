@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.2.0] – 2026-05-25
+### Added
+- Order acceptance state: card fetches `GET /api/orders/settings` on load; shows "Bestellungen momentan pausiert" / "Orders are currently paused" when barista has disabled acceptance; requires GLP add-on v1.46.0+
+
 ## [1.1.1] – 2026-05-25
 ### Fixed
 - Card rendered nothing — `_render()` guarded on `this._base` which is never set as a property; the base URL is provided by `_getBase()` method; closes #2
