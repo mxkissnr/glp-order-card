@@ -72,6 +72,8 @@ Auto-detected from the browser locale. Currently supported: 🇩🇪 DE, 🇬�
 ---
 
 <p align="center">
+  <a href="https://github.com/mxkissnr/gaggiuino-local-profiler/wiki">📖 Documentation (Wiki)</a> ·
+  <a href="CHANGELOG.md">📋 Changelog</a> ·
   <a href="https://github.com/mxkissnr/gaggiuino-local-profiler">🔧 GLP Add-on</a> ·
   <a href="https://github.com/mxkissnr/glp-lovelace-card">📊 GLP Shot Card</a> ·
   <a href="https://github.com/mxkissnr/glp-order-card/issues">🐛 Issues</a>
@@ -82,6 +84,10 @@ Auto-detected from the browser locale. Currently supported: 🇩🇪 DE, 🇬�
 ## License
 
 GPL-3.0 © 2024–2026 mxkissnr — free to use, fork and modify; any derivative work must remain open source under the same license. Commercial use is not permitted.
+
+## Acknowledgements
+
+Built on top of the [Gaggiuino](https://gaggiuino.github.io/) project and the [Gaggiuino Local Profiler](https://github.com/mxkissnr/gaggiuino-local-profiler) add-on.
 
 ---
 
