@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.3.2] – 2026-05-25
+### Fixed
+- Card showed "Orders are currently paused" permanently after any transient network error on initial load (regression from v1.3.1 where the catch block was changed to set `enabled = false`); catch block now leaves state unchanged so the "Loading…" spinner remains and the 10-second poll retries automatically; closes #5
+- Added `fromLoad` flag to `_loadStatus()` so the 10-second poll retries the full `_load()` when the initial load failed (`this._menu === null`), allowing the card to self-recover without a manual page reload
+
 ## [1.3.1] – 2026-05-25
 ### Fixed
 - Card showed "Loading…" indefinitely when `enable_orders: false` in add-on config: `_load()` now checks HTTP status before parsing JSON; a non-2xx response (e.g. 404 when orders feature is disabled) sets `this._enabled = false` so the "paused" message is shown instead; closes #4

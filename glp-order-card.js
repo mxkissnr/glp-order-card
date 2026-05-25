@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.3.1';
+const GLP_ORDER_CARD_VERSION = '1.3.2';
 
 function _esc(s) {
   if (s == null) return '';
@@ -240,6 +240,7 @@ class GlpOrderCard extends HTMLElement {
         this._fetch('api/orders/settings'),
       ]);
       if (!menuRes.ok || !settingsRes.ok) {
+        // Feature disabled at add-on level (404) or server error
         this._menu    = [];
         this._enabled = false;
       } else {
@@ -248,12 +249,17 @@ class GlpOrderCard extends HTMLElement {
         this._menu    = Array.isArray(menu) ? menu : [];
         this._enabled = settings?.enabled !== false;
       }
-    } catch { this._menu = []; this._enabled = false; }
-    await this._loadStatus();
+    } catch { /* network error — keep this._menu = null so _loadStatus retries */ }
+    await this._loadStatus(true);
     this._render();
   }
 
-  async _loadStatus() {
+  async _loadStatus(fromLoad = false) {
+    // If initial _load() failed (menu still null), retry the full load instead of just status
+    if (!fromLoad && this._menu === null) {
+      await this._load();
+      return;
+    }
     if (!this._hass) return;
     const haUser = this._hass.user;
     if (!haUser) return;
