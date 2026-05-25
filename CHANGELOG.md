@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.3.0] – 2026-05-25
+### Added
+- Shot summary when order is done: fetches the shot by `order.shotId` (set by add-on v1.47.0 at completion time); shows profile name, duration, yield and a mini SVG pressure sparkline; requires GLP add-on v1.47.0+; closes #3
+
 ## [1.2.0] – 2026-05-25
 ### Added
 - Order acceptance state: card fetches `GET /api/orders/settings` on load; shows "Bestellungen momentan pausiert" / "Orders are currently paused" when barista has disabled acceptance; requires GLP add-on v1.46.0+

@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.2.0';
+const GLP_ORDER_CARD_VERSION = '1.3.0';
 
 function _esc(s) {
   if (s == null) return '';
@@ -92,6 +92,28 @@ const STYLES = `
   .status-eta   { font-size: .85rem; font-weight: 600; color: var(--oc-green); }
   .status-decline { font-size: .82rem; color: var(--oc-accent); }
   .status-done-msg { font-size: .9rem; font-weight: 700; color: var(--oc-green); }
+  .shot-summary {
+    margin-top: 10px;
+    background: rgba(255,255,255,.03);
+    border: 1px solid var(--oc-border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .shot-summary-meta {
+    display: flex;
+    gap: 14px;
+    font-size: .8rem;
+    color: var(--oc-sub);
+  }
+  .shot-summary-profile {
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--oc-text);
+  }
+  .shot-sparkline { width: 100%; height: 42px; display: block; }
   .new-order-btn {
     margin-top: 10px; background: none; border: 1px solid var(--oc-border);
     border-radius: 8px; color: var(--oc-sub); font-family: inherit;
@@ -149,6 +171,7 @@ class GlpOrderCard extends HTMLElement {
     this._enabled   = true;
     this._selected  = null;
     this._activeOrder = null;
+    this._lastShot  = null;
     this._pollTimer = null;
     this._submitting = false;
     this._lang = navigator.language.slice(0,2).toLowerCase();
@@ -230,7 +253,16 @@ class GlpOrderCard extends HTMLElement {
       const active = orders.find(o => ['pending','accepted'].includes(o.status));
       const recent = !active ? orders.find(o => ['done','declined'].includes(o.status) && (Date.now() - (o.completedAt||0)) < 120000) : null;
       this._activeOrder = active || recent || null;
-    } catch { this._activeOrder = null; }
+      if (this._activeOrder?.status === 'done' && !this._lastShot) {
+        try {
+          const shotId = this._activeOrder.shotId;
+          const path = shotId ? `api/shots/${encodeURIComponent(shotId)}` : 'api/shots/last';
+          this._lastShot = await this._fetch(path).then(r => r.json());
+        } catch { this._lastShot = null; }
+      } else if (!this._activeOrder || this._activeOrder.status !== 'done') {
+        this._lastShot = null;
+      }
+    } catch { this._activeOrder = null; this._lastShot = null; }
     this._render();
   }
 
@@ -299,6 +331,37 @@ class GlpOrderCard extends HTMLElement {
       </div>`;
   }
 
+  _sparklineSvg(shot) {
+    const raw = shot?.datapoints?.pressure;
+    if (!Array.isArray(raw) || raw.length < 4) return '';
+    const vals = raw.map(v => v / 10);
+    const W = 240, H = 40, pad = 2;
+    const minV = Math.min(...vals), maxV = Math.max(...vals) || 1;
+    const pts = vals.map((v, i) => {
+      const x = pad + (i / (vals.length - 1)) * (W - pad * 2);
+      const y = H - pad - ((v - minV) / (maxV - minV)) * (H - pad * 2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    return `<svg class="shot-sparkline" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      <polyline points="${pts}" fill="none" stroke="#3b82f6" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+    </svg>`;
+  }
+
+  _renderShotSummary(shot, lang) {
+    if (!shot) return '';
+    const profile  = shot.profile?.name || shot.profileName || '–';
+    const dur      = shot.duration ? `${(shot.duration / 10).toFixed(0)} s` : null;
+    const wtArr    = shot.datapoints?.shotWeight || shot.datapoints?.weight;
+    const yield_g  = Array.isArray(wtArr) && wtArr.length ? `${(wtArr[wtArr.length - 1] / 10).toFixed(1)} g` : null;
+    const meta     = [dur, yield_g].filter(Boolean).join(' · ');
+    const sparkline = this._sparklineSvg(shot);
+    return `<div class="shot-summary">
+      <div class="shot-summary-profile">${_esc(profile)}</div>
+      ${meta ? `<div class="shot-summary-meta">${_esc(meta)}</div>` : ''}
+      ${sparkline}
+    </div>`;
+  }
+
   _renderStatus(order, lang) {
     let content = '';
     const item = _esc(order.item);
@@ -315,9 +378,10 @@ class GlpOrderCard extends HTMLElement {
         <div class="status-eta">${minsLeft === 0 ? '🎉 Gleich fertig!' : `~${minsLeft} min`}</div>
       </div>`;
     } else if (order.status === 'done') {
+      const shotHtml = this._renderShotSummary(this._lastShot, lang);
       content = `<div class="status-card done">
         <div class="status-done-msg">${_esc(_s('done', lang, order.item))}</div>
-      </div>`;
+      </div>${shotHtml}`;
     } else if (order.status === 'declined') {
       content = `<div class="status-card declined">
         <div class="status-item">${_esc(_s('declined', lang, order.item))}</div>
