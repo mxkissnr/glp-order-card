@@ -1,0 +1,379 @@
+const GLP_ORDER_CARD_VERSION = '1.0.0';
+
+function _esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function _safeUrl(url) {
+  if (!url) return null;
+  try { const u = new URL(url); return (u.protocol==='http:'||u.protocol==='https:') ? url : null; }
+  catch { return null; }
+}
+
+const STYLES = `
+  :host {
+    --oc-bg:     var(--card-background-color, #1c1c1e);
+    --oc-border: var(--divider-color, #3a3a3c);
+    --oc-text:   var(--primary-text-color, #f5f5f5);
+    --oc-sub:    var(--secondary-text-color, #8e8e93);
+    --oc-accent: #ef4444;
+    --oc-green:  #22c55e;
+    --oc-amber:  #f59e0b;
+  }
+  .card {
+    background: var(--oc-bg);
+    border-radius: 12px;
+    padding: 18px;
+    font-family: var(--paper-font-body1_-_font-family, sans-serif);
+    color: var(--oc-text);
+  }
+  .header {
+    display: flex; align-items: center; gap: 8px;
+    font-size: .9rem; font-weight: 600; color: var(--oc-sub);
+    letter-spacing: .03em; margin-bottom: 16px;
+  }
+  .machine-off {
+    background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2);
+    border-radius: 10px; color: #ef4444; font-size: .85rem;
+    text-align: center; padding: 14px;
+  }
+
+  /* Menu grid */
+  .menu-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .menu-item {
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--oc-border);
+    border-radius: 10px;
+    padding: 12px 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .15s;
+    user-select: none;
+  }
+  .menu-item:hover    { border-color: rgba(255,255,255,.2); background: rgba(255,255,255,.07); }
+  .menu-item.selected { border-color: var(--oc-amber); background: rgba(245,158,11,.1); }
+  .menu-item-emoji { font-size: 1.6rem; margin-bottom: 4px; }
+  .menu-item-name  { font-size: .75rem; color: var(--oc-sub); }
+
+  /* Order form */
+  .order-form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+  .note-input {
+    background: rgba(255,255,255,.05); border: 1px solid var(--oc-border);
+    border-radius: 8px; color: var(--oc-text); font-family: inherit;
+    font-size: .85rem; padding: 8px 12px; outline: none; width: 100%; box-sizing: border-box;
+  }
+  .note-input:focus { border-color: rgba(255,255,255,.25); }
+  .order-btn {
+    width: 100%; padding: 12px; border: none; border-radius: 10px;
+    font-size: .9rem; font-weight: 700; cursor: pointer;
+    font-family: inherit; transition: all .15s;
+    background: var(--oc-amber); color: #000;
+  }
+  .order-btn:disabled { opacity: .4; cursor: default; }
+  .order-btn:not(:disabled):hover { filter: brightness(1.1); }
+
+  /* Status card */
+  .status-card {
+    border-radius: 10px; padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .status-card.pending  { background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.25); }
+  .status-card.accepted { background: rgba(34,197,94,.08);  border: 1px solid rgba(34,197,94,.25); }
+  .status-card.done     { background: rgba(34,197,94,.06);  border: 1px solid rgba(34,197,94,.15); }
+  .status-card.declined { background: rgba(239,68,68,.07);  border: 1px solid rgba(239,68,68,.2); }
+  .status-item  { font-size: 1rem; font-weight: 700; }
+  .status-line  { font-size: .82rem; color: var(--oc-sub); }
+  .status-eta   { font-size: .85rem; font-weight: 600; color: var(--oc-green); }
+  .status-decline { font-size: .82rem; color: var(--oc-accent); }
+  .status-done-msg { font-size: .9rem; font-weight: 700; color: var(--oc-green); }
+  .new-order-btn {
+    margin-top: 10px; background: none; border: 1px solid var(--oc-border);
+    border-radius: 8px; color: var(--oc-sub); font-family: inherit;
+    font-size: .8rem; padding: 7px 14px; cursor: pointer; transition: all .15s;
+  }
+  .new-order-btn:hover { border-color: rgba(255,255,255,.25); color: var(--oc-text); }
+  .loading { color: var(--oc-sub); font-size: .85rem; text-align: center; padding: 16px 0; }
+`;
+
+const STRINGS = {
+  de: {
+    title: 'Bestellen',
+    off: 'Maschine aus — Bestellung nicht möglich',
+    order_btn: (item) => `☕ ${item} bestellen`,
+    order_btn_select: 'Getränk auswählen',
+    note_ph: 'Notiz (optional) …',
+    pending: (item) => `⏳ ${item} — wartet auf Bestätigung`,
+    accepted: (item, min) => `☕ ${item} — fertig in ~${min} Min`,
+    done: (item) => `✓ ${item} ist fertig!`,
+    declined: (item) => `✕ ${item} wurde abgelehnt`,
+    decline_reason: (r) => `Grund: ${r}`,
+    new_order: '+ Neue Bestellung',
+    loading: 'Lade …',
+  },
+  en: {
+    title: 'Order',
+    off: 'Machine is off — ordering not available',
+    order_btn: (item) => `☕ Order ${item}`,
+    order_btn_select: 'Select a drink',
+    note_ph: 'Note (optional) …',
+    pending: (item) => `⏳ ${item} — waiting for confirmation`,
+    accepted: (item, min) => `☕ ${item} — ready in ~${min} min`,
+    done: (item) => `✓ ${item} is ready!`,
+    declined: (item) => `✕ ${item} was declined`,
+    decline_reason: (r) => `Reason: ${r}`,
+    new_order: '+ New Order',
+    loading: 'Loading …',
+  },
+};
+
+function _s(key, lang, ...args) {
+  const tr = STRINGS[lang] || STRINGS.en;
+  const val = tr[key] ?? STRINGS.en[key] ?? key;
+  return typeof val === 'function' ? val(...args) : val;
+}
+
+class GlpOrderCard extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this._token     = null;
+    this._menu      = null;
+    this._selected  = null;
+    this._activeOrder = null;
+    this._pollTimer = null;
+    this._submitting = false;
+    this._lang = navigator.language.slice(0,2).toLowerCase();
+    if (!STRINGS[this._lang]) this._lang = 'en';
+  }
+
+  setConfig(config) {
+    if (!config.glp_url) throw new Error('glp_url is required');
+    this._config = { title: null, switch_entity: null, ...config };
+    this._base = _safeUrl(config.glp_url.replace(/\/$/, ''));
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._render();
+  }
+
+  connectedCallback() { this._startPoll(); }
+  disconnectedCallback() { this._stopPoll(); }
+
+  _startPoll() {
+    this._stopPoll();
+    this._load();
+    this._pollTimer = setInterval(() => this._loadStatus(), 10000);
+  }
+  _stopPoll() {
+    if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = null; }
+  }
+
+  async _ensureToken() {
+    if (this._token) return this._token;
+    try {
+      const d = await fetch(`${this._base}/api/status`).then(r => r.json());
+      this._token = d.apiToken || null;
+    } catch {}
+    return this._token;
+  }
+
+  async _fetch(path, opts = {}) {
+    const token = await this._ensureToken();
+    if (token) opts = { ...opts, headers: { ...opts.headers, 'X-GLP-Token': token } };
+    return fetch(`${this._base}/${path}`, opts);
+  }
+
+  async _load() {
+    try {
+      const menu = await this._fetch('api/orders/menu').then(r => r.json());
+      this._menu = Array.isArray(menu) ? menu : [];
+    } catch { this._menu = []; }
+    await this._loadStatus();
+    this._render();
+  }
+
+  async _loadStatus() {
+    if (!this._hass) return;
+    const haUser = this._hass.user;
+    if (!haUser) return;
+    try {
+      const orders = await this._fetch(`api/orders/mine?haUserId=${encodeURIComponent(haUser.id)}`).then(r => r.json());
+      const active = orders.find(o => ['pending','accepted'].includes(o.status));
+      const recent = !active ? orders.find(o => ['done','declined'].includes(o.status) && (Date.now() - (o.completedAt||0)) < 120000) : null;
+      this._activeOrder = active || recent || null;
+    } catch { this._activeOrder = null; }
+    this._render();
+  }
+
+  _machineOff() {
+    const entity = this._config.switch_entity;
+    if (!entity || !this._hass) return false;
+    const s = this._hass.states[entity];
+    return s?.state === 'off' || s?.state === 'unavailable';
+  }
+
+  _render() {
+    if (!this._config || !this._base) return;
+    const lang  = this._lang;
+    const title = this._config.title || _s('title', lang);
+    const off   = this._machineOff();
+
+    let body = '';
+
+    if (off) {
+      body = `<div class="machine-off">${_s('off', lang)}</div>`;
+    } else if (this._activeOrder) {
+      body = this._renderStatus(this._activeOrder, lang);
+    } else if (this._menu === null) {
+      body = `<div class="loading">${_s('loading', lang)}</div>`;
+    } else {
+      body = this._renderOrderForm(lang);
+    }
+
+    this.shadowRoot.innerHTML = `
+      <style>${STYLES}</style>
+      <ha-card>
+        <div class="card">
+          <div class="header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M2 21v-2h2V3h14v2h2a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2v6h2v2H2zm4-2h8V5H6v14zm10-6h2V7h-2v6z"/>
+            </svg>
+            ${_esc(title)}
+          </div>
+          ${body}
+        </div>
+      </ha-card>`;
+
+    this._bindEvents();
+  }
+
+  _renderOrderForm(lang) {
+    if (!this._menu || this._menu.length === 0) {
+      return `<div class="loading">${_s('loading', lang)}</div>`;
+    }
+    const items = this._menu.map(m => `
+      <div class="menu-item${this._selected === m.name ? ' selected' : ''}" data-item="${_esc(m.name)}">
+        <div class="menu-item-emoji">${_esc(m.emoji)}</div>
+        <div class="menu-item-name">${_esc(m.name)}</div>
+      </div>`).join('');
+
+    const btnLabel = this._selected ? _s('order_btn', lang, this._selected) : _s('order_btn_select', lang);
+    return `
+      <div class="order-form">
+        <div class="menu-grid">${items}</div>
+        <input class="note-input" id="oc-note" placeholder="${_s('note_ph', lang)}" maxlength="200">
+        <button class="order-btn" id="oc-submit" ${!this._selected || this._submitting ? 'disabled' : ''}>
+          ${_esc(btnLabel)}
+        </button>
+      </div>`;
+  }
+
+  _renderStatus(order, lang) {
+    let content = '';
+    const item = _esc(order.item);
+
+    if (order.status === 'pending') {
+      content = `<div class="status-card pending">
+        <div class="status-item">${_esc(_s('pending', lang, order.item))}</div>
+      </div>`;
+    } else if (order.status === 'accepted') {
+      const etaDone   = order.acceptedAt + order.eta * 60000;
+      const minsLeft  = Math.max(0, Math.ceil((etaDone - Date.now()) / 60000));
+      content = `<div class="status-card accepted">
+        <div class="status-item">${_esc(_s('accepted', lang, order.item, minsLeft))}</div>
+        <div class="status-eta">${minsLeft === 0 ? '🎉 Gleich fertig!' : `~${minsLeft} min`}</div>
+      </div>`;
+    } else if (order.status === 'done') {
+      content = `<div class="status-card done">
+        <div class="status-done-msg">${_esc(_s('done', lang, order.item))}</div>
+      </div>`;
+    } else if (order.status === 'declined') {
+      content = `<div class="status-card declined">
+        <div class="status-item">${_esc(_s('declined', lang, order.item))}</div>
+        ${order.declineReason ? `<div class="status-decline">${_esc(_s('decline_reason', lang, order.declineReason))}</div>` : ''}
+      </div>`;
+    }
+
+    return `${content}<button class="new-order-btn" id="oc-new-order">${_s('new_order', lang)}</button>`;
+  }
+
+  _bindEvents() {
+    // Menu item selection
+    this.shadowRoot.querySelectorAll('.menu-item').forEach(el => {
+      el.addEventListener('click', () => {
+        this._selected = this._selected === el.dataset.item ? null : el.dataset.item;
+        this._render();
+      });
+    });
+    // Submit
+    const submitBtn = this.shadowRoot.getElementById('oc-submit');
+    if (submitBtn) {
+      submitBtn.addEventListener('click', () => this._placeOrder());
+    }
+    // New order
+    const newBtn = this.shadowRoot.getElementById('oc-new-order');
+    if (newBtn) {
+      newBtn.addEventListener('click', () => {
+        this._activeOrder = null;
+        this._selected    = null;
+        this._render();
+      });
+    }
+  }
+
+  async _placeOrder() {
+    if (!this._selected || this._submitting) return;
+    const noteEl = this.shadowRoot.getElementById('oc-note');
+    const note   = noteEl?.value?.trim() || '';
+    const haUser = this._hass?.user;
+    if (!haUser) return;
+
+    this._submitting = true;
+    this._render();
+
+    try {
+      const order = await this._fetch('api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item:     this._selected,
+          note,
+          customer: haUser.name,
+          haUserId: haUser.id,
+        }),
+      }).then(r => r.json());
+
+      if (order.id) {
+        this._activeOrder = order;
+        this._selected    = null;
+      }
+    } catch {}
+    this._submitting = false;
+    this._render();
+  }
+
+  getCardSize() { return 3; }
+
+  static getConfigElement() { return document.createElement('glp-order-card-editor'); }
+  static getStubConfig()    { return { glp_url: 'http://homeassistant.local:8099' }; }
+}
+
+customElements.define('glp-order-card', GlpOrderCard);
+
+window.customCards = window.customCards || [];
+window.customCards.push({
+  type:        'glp-order-card',
+  name:        'GLP Order Card',
+  description: 'Customer-facing order card for Gaggiuino Local Profiler',
+  preview:     false,
+  documentationURL: 'https://github.com/mxkissnr/glp-order-card',
+});
+
+console.info(`%c GLP-ORDER-CARD %c v${GLP_ORDER_CARD_VERSION} `, 'background:#f59e0b;color:#000;padding:2px 4px;border-radius:3px 0 0 3px', 'background:#1c1c1e;color:#f59e0b;padding:2px 4px;border-radius:0 3px 3px 0');
