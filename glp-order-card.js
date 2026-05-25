@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.3.2';
+const GLP_ORDER_CARD_VERSION = '1.3.3';
 
 function _esc(s) {
   if (s == null) return '';
@@ -239,16 +239,17 @@ class GlpOrderCard extends HTMLElement {
         this._fetch('api/orders/menu'),
         this._fetch('api/orders/settings'),
       ]);
-      if (!menuRes.ok || !settingsRes.ok) {
-        // Feature disabled at add-on level (404) or server error
+      if (menuRes.status === 404 && settingsRes.status === 404) {
+        // Feature disabled at add-on level
         this._menu    = [];
         this._enabled = false;
-      } else {
+      } else if (menuRes.ok && settingsRes.ok) {
         const menu     = await menuRes.json();
         const settings = await settingsRes.json();
         this._menu    = Array.isArray(menu) ? menu : [];
         this._enabled = settings?.enabled !== false;
       }
+      // else: other non-ok (401, 500 …) — leave _menu = null so _loadStatus retries
     } catch { /* network error — keep this._menu = null so _loadStatus retries */ }
     await this._loadStatus(true);
     this._render();
@@ -263,6 +264,14 @@ class GlpOrderCard extends HTMLElement {
     if (!this._hass) return;
     const haUser = this._hass.user;
     if (!haUser) return;
+    // Re-check enabled/paused state on every periodic poll so barista toggle changes
+    // are picked up within 10 s without requiring a page reload
+    if (!fromLoad) {
+      try {
+        const sr = await this._fetch('api/orders/settings');
+        if (sr.ok) this._enabled = (await sr.json())?.enabled !== false;
+      } catch {}
+    }
     try {
       const orders = await this._fetch(`api/orders/mine?haUserId=${encodeURIComponent(haUser.id)}`).then(r => r.json());
       const active = orders.find(o => ['pending','accepted'].includes(o.status));

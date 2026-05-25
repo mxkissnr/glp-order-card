@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.3.3] – 2026-05-25
+### Fixed
+- Card showed "Orders are currently paused" permanently even after the barista re-enabled orders in the backend: `_loadStatus()` now re-fetches `GET /api/orders/settings` on every 10 s poll so barista toggle changes are picked up without a page reload; closes #6
+- `_load()` treated any non-2xx response (401, 500 …) the same as a genuine feature-disabled 404, permanently locking the "paused" state; only a double-404 (both `/api/orders/menu` and `/api/orders/settings`) now sets the paused/empty state — other errors leave `this._menu = null` so the existing retry logic kicks in
+
 ## [1.3.2] – 2026-05-25
 ### Fixed
 - Card showed "Orders are currently paused" permanently after any transient network error on initial load (regression from v1.3.1 where the catch block was changed to set `enabled = false`); catch block now leaves state unchanged so the "Loading…" spinner remains and the 10-second poll retries automatically; closes #5
