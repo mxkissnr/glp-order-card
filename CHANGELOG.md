@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.1.1] – 2026-05-25
+### Fixed
+- Card rendered nothing — `_render()` guarded on `this._base` which is never set as a property; the base URL is provided by `_getBase()` method; closes #2
+
 ## [1.1.0] – 2026-05-25
 ### Added
 - Zero-config mode: `glp_url` and `switch_entity` are now optional; the card auto-detects the GLP backend via the HA ingress path (`/api/hassio_ingress/gaggiuino_local_profiler`) so no manual URL configuration is needed in a standard HA setup; `switch_entity` is auto-read from the `machine_status` sensor attribute; closes #1

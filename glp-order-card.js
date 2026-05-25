@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.1.0';
+const GLP_ORDER_CARD_VERSION = '1.1.1';
 
 function _esc(s) {
   if (s == null) return '';
@@ -235,7 +235,7 @@ class GlpOrderCard extends HTMLElement {
   }
 
   _render() {
-    if (!this._config || !this._base) return;
+    if (!this._config) return;
     const lang  = this._lang;
     const title = this._config.title || _s('title', lang);
     const off   = this._machineOff();
