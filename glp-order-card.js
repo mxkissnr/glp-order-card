@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.3.6';
+const GLP_ORDER_CARD_VERSION = '1.3.7';
 
 function _esc(s) {
   if (s == null) return '';
@@ -230,9 +230,11 @@ class GlpOrderCard extends HTMLElement {
   async _fetch(path, opts = {}) {
     const url = `${this._getBase()}/${path}`;
     // In ingress mode use hass.fetchWithAuth so HA Supervisor accepts the request
-    // via Bearer token (no separate session cookie required)
+    // via Bearer token. fetchWithAuth expects a path, not a full URL — extract
+    // pathname + search so it doesn't prepend the HA origin a second time.
     if (this._useIngress() && this._hass?.fetchWithAuth) {
-      return this._hass.fetchWithAuth(url, opts);
+      const u = new URL(url);
+      return this._hass.fetchWithAuth(u.pathname + u.search, opts);
     }
     const token = await this._ensureToken();
     if (token) opts = { ...opts, headers: { ...opts.headers, 'X-GLP-Token': token } };

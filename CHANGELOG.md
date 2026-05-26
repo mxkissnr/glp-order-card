@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.3.7] – 2026-05-26
+### Fixed
+- `hass.fetchWithAuth` expects a path (`/api/hassio_ingress/...`), not a full URL — passing the absolute URL caused the HA origin to be prepended twice (`https://ha.kissner.prohttps//...`), triggering a CORS error; now extracts `pathname + search` from the URL before passing to `fetchWithAuth`; closes #8
+
 ## [1.3.6] – 2026-05-26
 ### Fixed
 - Replaced ingress session approach (POST `/api/hassio/ingress/session` → 401) with `hass.fetchWithAuth()` for all requests in ingress mode; HA Supervisor accepts requests authenticated via Bearer token without a separate session cookie; closes #8
