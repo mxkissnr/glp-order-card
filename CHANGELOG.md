@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.3.6] – 2026-05-26
+### Fixed
+- Replaced ingress session approach (POST `/api/hassio/ingress/session` → 401) with `hass.fetchWithAuth()` for all requests in ingress mode; HA Supervisor accepts requests authenticated via Bearer token without a separate session cookie; closes #8
+
 ## [1.3.5] – 2026-05-26
 ### Fixed
 - `_ensureIngress()` used a raw `fetch` with `Authorization: Bearer` header → HA returned 401 because the access token may be stale; switched to `this._hass.callApi('POST', 'hassio/ingress/session')` which handles token refresh automatically; also extracts the session string from the response and writes it to the `ingress_session` cookie on the correct ingress path so HA Supervisor accepts subsequent proxied requests; closes #8

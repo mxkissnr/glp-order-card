@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.3.5';
+const GLP_ORDER_CARD_VERSION = '1.3.6';
 
 function _esc(s) {
   if (s == null) return '';
@@ -176,7 +176,6 @@ class GlpOrderCard extends HTMLElement {
     this._lastShot  = null;
     this._pollTimer = null;
     this._submitting = false;
-    this._ingressRefreshed = null;
     this._lang = navigator.language.slice(0,2).toLowerCase();
     if (!STRINGS[this._lang]) this._lang = 'en';
   }
@@ -218,24 +217,6 @@ class GlpOrderCard extends HTMLElement {
 
   _useIngress() { return !this._config?.glp_url; }
 
-  // HA Supervisor requires an ingress_session cookie for XHR requests made from
-  // outside the ingress iframe (e.g. a Lovelace card). Without it, HA returns 503.
-  // hass.callApi handles token refresh; the returned session string must be set
-  // as a cookie on the ingress path so Supervisor accepts subsequent proxied requests.
-  async _ensureIngress() {
-    if (!this._useIngress() || !this._hass?.callApi) return;
-    if (this._ingressRefreshed && Date.now() - this._ingressRefreshed < 30000) return;
-    try {
-      const resp = await this._hass.callApi('POST', 'hassio/ingress/session');
-      const session = resp?.session ?? resp?.data?.session;
-      if (session) {
-        const secure = location.protocol === 'https:' ? ';Secure' : '';
-        document.cookie = `ingress_session=${encodeURIComponent(session)};path=/api/hassio_ingress/gaggiuino_local_profiler;SameSite=strict${secure}`;
-        this._ingressRefreshed = Date.now();
-      }
-    } catch {}
-  }
-
   async _ensureToken() {
     if (this._useIngress()) return null; // ingress bypasses token check
     if (this._token) return this._token;
@@ -247,13 +228,18 @@ class GlpOrderCard extends HTMLElement {
   }
 
   async _fetch(path, opts = {}) {
+    const url = `${this._getBase()}/${path}`;
+    // In ingress mode use hass.fetchWithAuth so HA Supervisor accepts the request
+    // via Bearer token (no separate session cookie required)
+    if (this._useIngress() && this._hass?.fetchWithAuth) {
+      return this._hass.fetchWithAuth(url, opts);
+    }
     const token = await this._ensureToken();
     if (token) opts = { ...opts, headers: { ...opts.headers, 'X-GLP-Token': token } };
-    return fetch(`${this._getBase()}/${path}`, opts);
+    return fetch(url, opts);
   }
 
   async _load() {
-    await this._ensureIngress();
     try {
       const [menuRes, settingsRes] = await Promise.all([
         this._fetch('api/orders/menu'),
@@ -284,8 +270,6 @@ class GlpOrderCard extends HTMLElement {
     if (!this._hass) return;
     const haUser = this._hass.user;
     if (!haUser) return;
-    // Keep ingress session alive; throttled to once per 30 s
-    if (!fromLoad) await this._ensureIngress();
     // Re-check enabled/paused state on every periodic poll so barista toggle changes
     // are picked up within 10 s without requiring a page reload
     if (!fromLoad) {
