@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.4.2] – 2026-05-26
+### Fixed
+- Note input no longer loses focus immediately on mobile — `set hass()` and the polling render now check a `_noteInteracting` flag and skip `_render()` while the input is focused; on blur any pending status update is applied; regression introduced in v1.4.1; closes #11
+
 ## [1.4.1] – 2026-05-26
 ### Fixed
 - Card now updates within 3 s when a pending or accepted order changes status — replaced fixed 10 s `setInterval` with a chained `setTimeout` that uses 3 s while an order is active and 10 s in menu state; closes #10

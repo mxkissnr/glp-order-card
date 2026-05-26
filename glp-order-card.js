@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.4.1';
+const GLP_ORDER_CARD_VERSION = '1.4.2';
 
 function _esc(s) {
   if (s == null) return '';
@@ -176,6 +176,8 @@ class GlpOrderCard extends HTMLElement {
     this._lastShot  = null;
     this._pollTimer = null;
     this._submitting = false;
+    this._noteInteracting = false;
+    this._pendingRender   = false;
     this._lang = navigator.language.slice(0,2).toLowerCase();
     if (!STRINGS[this._lang]) this._lang = 'en';
   }
@@ -203,7 +205,7 @@ class GlpOrderCard extends HTMLElement {
     this._hass = hass;
     if (firstHass && this._menu === null) {
       this._load();
-    } else {
+    } else if (!this._noteInteracting) {
       this._render();
     }
   }
@@ -308,7 +310,11 @@ class GlpOrderCard extends HTMLElement {
         this._lastShot = null;
       }
     } catch { this._activeOrder = null; this._lastShot = null; }
-    this._render();
+    if (this._noteInteracting) {
+      this._pendingRender = true;
+    } else {
+      this._render();
+    }
   }
 
   _machineOff() {
@@ -445,6 +451,15 @@ class GlpOrderCard extends HTMLElement {
         this._render();
       });
     });
+    // Note input: block re-renders while user is typing
+    const noteEl = this.shadowRoot.getElementById('oc-note');
+    if (noteEl) {
+      noteEl.addEventListener('focus', () => { this._noteInteracting = true; });
+      noteEl.addEventListener('blur',  () => {
+        this._noteInteracting = false;
+        if (this._pendingRender) { this._pendingRender = false; this._render(); }
+      });
+    }
     // Submit
     const submitBtn = this.shadowRoot.getElementById('oc-submit');
     if (submitBtn) {
