@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.3.4';
+const GLP_ORDER_CARD_VERSION = '1.3.5';
 
 function _esc(s) {
   if (s == null) return '';
@@ -218,19 +218,21 @@ class GlpOrderCard extends HTMLElement {
 
   _useIngress() { return !this._config?.glp_url; }
 
-  // HA Supervisor requires an ingress session cookie for XHR requests made from
+  // HA Supervisor requires an ingress_session cookie for XHR requests made from
   // outside the ingress iframe (e.g. a Lovelace card). Without it, HA returns 503.
+  // hass.callApi handles token refresh; the returned session string must be set
+  // as a cookie on the ingress path so Supervisor accepts subsequent proxied requests.
   async _ensureIngress() {
-    if (!this._useIngress()) return;
-    const token = this._hass?.auth?.data?.access_token;
-    if (!token) return;
+    if (!this._useIngress() || !this._hass?.callApi) return;
     if (this._ingressRefreshed && Date.now() - this._ingressRefreshed < 30000) return;
     try {
-      await fetch('/api/hassio/ingress/session', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      this._ingressRefreshed = Date.now();
+      const resp = await this._hass.callApi('POST', 'hassio/ingress/session');
+      const session = resp?.session ?? resp?.data?.session;
+      if (session) {
+        const secure = location.protocol === 'https:' ? ';Secure' : '';
+        document.cookie = `ingress_session=${encodeURIComponent(session)};path=/api/hassio_ingress/gaggiuino_local_profiler;SameSite=strict${secure}`;
+        this._ingressRefreshed = Date.now();
+      }
     } catch {}
   }
 

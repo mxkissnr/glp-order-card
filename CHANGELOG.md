@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.3.5] – 2026-05-26
+### Fixed
+- `_ensureIngress()` used a raw `fetch` with `Authorization: Bearer` header → HA returned 401 because the access token may be stale; switched to `this._hass.callApi('POST', 'hassio/ingress/session')` which handles token refresh automatically; also extracts the session string from the response and writes it to the `ingress_session` cookie on the correct ingress path so HA Supervisor accepts subsequent proxied requests; closes #8
+
 ## [1.3.4] – 2026-05-25
 ### Fixed
 - Card received 503 from HA Supervisor on all `/api/orders/*` calls: HA requires an active ingress session cookie for XHR requests made from a Lovelace card (outside the ingress iframe); card now calls `POST /api/hassio/ingress/session` before requests, throttled to once per 30 s; closes #7
