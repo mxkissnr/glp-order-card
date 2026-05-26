@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.4.0] – 2026-05-26
+### Changed
+- Zero-config mode now routes all API calls through the HA integration REST proxy (`/api/glp/orders/*`, `/api/glp/shots/*`) via `hass.fetchWithAuth` instead of Supervisor ingress; eliminates the 503 errors caused by missing ingress session cookies; requires glp-integration v1.7.0+; closes #9
+
 ## [1.3.7] – 2026-05-26
 ### Fixed
 - `hass.fetchWithAuth` expects a path (`/api/hassio_ingress/...`), not a full URL — passing the absolute URL caused the HA origin to be prepended twice (`https://ha.kissner.prohttps//...`), triggering a CORS error; now extracts `pathname + search` from the URL before passing to `fetchWithAuth`; closes #8

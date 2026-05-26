@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.3.7';
+const GLP_ORDER_CARD_VERSION = '1.4.0';
 
 function _esc(s) {
   if (s == null) return '';
@@ -228,14 +228,14 @@ class GlpOrderCard extends HTMLElement {
   }
 
   async _fetch(path, opts = {}) {
-    const url = `${this._getBase()}/${path}`;
-    // In ingress mode use hass.fetchWithAuth so HA Supervisor accepts the request
-    // via Bearer token. fetchWithAuth expects a path, not a full URL — extract
-    // pathname + search so it doesn't prepend the HA origin a second time.
+    // In zero-config mode route through the HA integration REST proxy (/api/glp/*)
+    // which the integration registers as a standard HA HTTP view, authenticated via
+    // Bearer token — no Supervisor ingress session cookie required.
     if (this._useIngress() && this._hass?.fetchWithAuth) {
-      const u = new URL(url);
-      return this._hass.fetchWithAuth(u.pathname + u.search, opts);
+      const proxyPath = '/api/glp/' + path.replace(/^api\//, '');
+      return this._hass.fetchWithAuth(proxyPath, opts);
     }
+    const url = `${this._getBase()}/${path}`;
     const token = await this._ensureToken();
     if (token) opts = { ...opts, headers: { ...opts.headers, 'X-GLP-Token': token } };
     return fetch(url, opts);
