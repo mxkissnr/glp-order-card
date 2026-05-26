@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.4.0';
+const GLP_ORDER_CARD_VERSION = '1.4.1';
 
 function _esc(s) {
   if (s == null) return '';
@@ -199,8 +199,13 @@ class GlpOrderCard extends HTMLElement {
   }
 
   set hass(hass) {
+    const firstHass = !this._hass;
     this._hass = hass;
-    this._render();
+    if (firstHass && this._menu === null) {
+      this._load();
+    } else {
+      this._render();
+    }
   }
 
   connectedCallback() { this._startPoll(); }
@@ -209,10 +214,18 @@ class GlpOrderCard extends HTMLElement {
   _startPoll() {
     this._stopPoll();
     this._load();
-    this._pollTimer = setInterval(() => this._loadStatus(), 10000);
+    this._schedulePoll();
+  }
+  _schedulePoll() {
+    if (this._pollTimer) clearTimeout(this._pollTimer);
+    const hasActive = this._activeOrder?.status === 'pending' || this._activeOrder?.status === 'accepted';
+    this._pollTimer = setTimeout(async () => {
+      await this._loadStatus();
+      this._schedulePoll();
+    }, hasActive ? 3000 : 10000);
   }
   _stopPoll() {
-    if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = null; }
+    if (this._pollTimer) { clearTimeout(this._pollTimer); this._pollTimer = null; }
   }
 
   _useIngress() { return !this._config?.glp_url; }

@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.4.1] – 2026-05-26
+### Fixed
+- Card now updates within 3 s when a pending or accepted order changes status — replaced fixed 10 s `setInterval` with a chained `setTimeout` that uses 3 s while an order is active and 10 s in menu state; closes #10
+- Initial load no longer stalls when `connectedCallback` fires before `hass` is set — `set hass()` now triggers `_load()` on first call if the menu is still unloaded
+
 ## [1.4.0] – 2026-05-26
 ### Changed
 - Zero-config mode now routes all API calls through the HA integration REST proxy (`/api/glp/orders/*`, `/api/glp/shots/*`) via `hass.fetchWithAuth` instead of Supervisor ingress; eliminates the 503 errors caused by missing ingress session cookies; requires glp-integration v1.7.0+; closes #9
