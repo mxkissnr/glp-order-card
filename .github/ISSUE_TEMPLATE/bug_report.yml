@@ -1,0 +1,46 @@
+name: Bug Report
+description: Something is not working as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for reporting a bug!"
+
+  - type: input
+    id: card_version
+    attributes:
+      label: Card version
+      description: Visible in the browser console when HA loads
+      placeholder: "e.g. 1.2.0"
+    validations:
+      required: true
+
+  - type: input
+    id: addon_version
+    attributes:
+      label: GLP add-on version
+      placeholder: "e.g. 1.62.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: What happened? What did you expect?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Browser console output
+      description: Open DevTools (F12) → Console and paste any errors here.
+      render: text
