@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.5.1] – 2026-05-27
+### Fixed
+- Menu item clicks no longer miss or flicker: `_render()` (full DOM replacement) is now blocked for 300 ms after any `pointerdown` inside the card — prevents HA state updates wiping the target element between `pointerdown` and `click`; closes #16
+- Menu item selection no longer triggers a full re-render — instead only the `.selected` CSS class and the submit button label/disabled state are updated in-place, eliminating all visual flicker on item tap
+- `set hass()` renders are now debounced by 1 s to prevent the frequent HA entity-state ticks from interrupting interactions; machine on/off changes still reflect within ~1 s
+
 ## [1.5.0] – 2026-05-27
 ### Added
 - Multi-series shot chart in the completed-order summary: replaced the single blue sparkline with a full SVG chart showing pressure (blue), weight flow (green) and shot weight (purple), each normalised to its own min/max; a colour-coded legend is rendered below the chart; closes #13

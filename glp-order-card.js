@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.5.0';
+const GLP_ORDER_CARD_VERSION = '1.5.1';
 
 function _esc(s) {
   if (s == null) return '';
@@ -187,6 +187,9 @@ class GlpOrderCard extends HTMLElement {
     this._submitting = false;
     this._noteInteracting = false;
     this._pendingRender   = false;
+    this._clickBlocked    = false;
+    this._clickBlockTimer = null;
+    this._hassRenderTimer = null;
     this._lang = navigator.language.slice(0,2).toLowerCase();
     if (!STRINGS[this._lang]) this._lang = 'en';
   }
@@ -214,8 +217,13 @@ class GlpOrderCard extends HTMLElement {
     this._hass = hass;
     if (firstHass && this._menu === null) {
       this._load();
-    } else if (!this._noteInteracting) {
-      this._render();
+    } else if (!this._noteInteracting && !this._clickBlocked) {
+      // Debounce hass-triggered renders: HA pushes updates very frequently
+      // (entity state ticks, etc.) — 1 s is fast enough for machine on/off changes
+      clearTimeout(this._hassRenderTimer);
+      this._hassRenderTimer = setTimeout(() => {
+        if (!this._noteInteracting && !this._clickBlocked) this._render();
+      }, 1000);
     }
   }
 
@@ -319,7 +327,7 @@ class GlpOrderCard extends HTMLElement {
         this._lastShot = null;
       }
     } catch { this._activeOrder = null; this._lastShot = null; }
-    if (this._noteInteracting) {
+    if (this._noteInteracting || this._clickBlocked) {
       this._pendingRender = true;
     } else {
       this._render();
@@ -495,13 +503,39 @@ class GlpOrderCard extends HTMLElement {
   }
 
   _bindEvents() {
-    // Menu item selection
+    // Block any render for 300 ms after a pointer interaction to prevent
+    // DOM replacement eating the click event before it fires
+    this.shadowRoot.addEventListener('pointerdown', () => {
+      this._clickBlocked = true;
+      clearTimeout(this._clickBlockTimer);
+      this._clickBlockTimer = setTimeout(() => {
+        this._clickBlocked = false;
+        if (this._pendingRender && !this._noteInteracting) {
+          this._pendingRender = false;
+          this._render();
+        }
+      }, 300);
+    }, { passive: true });
+
+    // Menu item selection — toggle CSS only, no full re-render
     this.shadowRoot.querySelectorAll('.menu-item').forEach(el => {
       el.addEventListener('click', () => {
         this._selected = this._selected === el.dataset.item ? null : el.dataset.item;
-        this._render();
+        // Update selected state without replacing the DOM
+        this.shadowRoot.querySelectorAll('.menu-item').forEach(m => {
+          m.classList.toggle('selected', m.dataset.item === this._selected);
+        });
+        // Update submit button label + disabled state
+        const btn = this.shadowRoot.getElementById('oc-submit');
+        if (btn) {
+          btn.textContent = this._selected
+            ? _s('order_btn', this._lang, this._selected)
+            : _s('order_btn_select', this._lang);
+          btn.disabled = !this._selected || this._submitting;
+        }
       });
     });
+
     // Note input: block re-renders while user is typing
     const noteEl = this.shadowRoot.getElementById('oc-note');
     if (noteEl) {
