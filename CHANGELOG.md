@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.5.0] – 2026-05-27
+### Added
+- Multi-series shot chart in the completed-order summary: replaced the single blue sparkline with a full SVG chart showing pressure (blue), weight flow (green) and shot weight (purple), each normalised to its own min/max; a colour-coded legend is rendered below the chart; closes #13
+- Trending section in the order form: menu items flagged as trending by the barista are shown in a "🔥 Trending" section above the full menu, separated by an "All drinks" header; trending items display a 🔥 badge; requires GLP add-on v1.58.0+; closes #14
+- NEW badge on recently added menu items: any item with a `createdAt` timestamp younger than 7 days shows a "NEW" badge in the order form; requires GLP add-on v1.58.0+; closes #15
+
 ## [1.4.2] – 2026-05-26
 ### Fixed
 - Note input no longer loses focus immediately on mobile — `set hass()` and the polling render now check a `_noteInteracting` flag and skip `_render()` while the input is focused; on blur any pending status update is applied; regression introduced in v1.4.1; closes #11

@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.4.2';
+const GLP_ORDER_CARD_VERSION = '1.5.0';
 
 function _esc(s) {
   if (s == null) return '';
@@ -113,7 +113,14 @@ const STYLES = `
     font-weight: 600;
     color: var(--oc-text);
   }
-  .shot-sparkline { width: 100%; height: 42px; display: block; }
+  .shot-chart { width: 100%; height: 80px; display: block; }
+  .shot-chart-legend { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+  .shot-chart-legend-item { display: flex; align-items: center; gap: 4px; font-size: .7rem; color: var(--oc-sub); }
+  .shot-chart-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .menu-badge { display: inline-block; font-size: .6rem; font-weight: 700; padding: 1px 5px; border-radius: 4px; vertical-align: middle; margin-left: 4px; line-height: 1.5; }
+  .menu-badge-new { background: rgba(34,197,94,.2); color: #22c55e; border: 1px solid rgba(34,197,94,.3); }
+  .menu-badge-trend { background: rgba(239,68,68,.15); color: #f87171; border: 1px solid rgba(239,68,68,.25); }
+  .menu-section-title { font-size: .7rem; font-weight: 700; color: var(--oc-sub); letter-spacing: .06em; text-transform: uppercase; margin: 0 0 6px; }
   .new-order-btn {
     margin-top: 10px; background: none; border: 1px solid var(--oc-border);
     border-radius: 8px; color: var(--oc-sub); font-family: inherit;
@@ -139,6 +146,7 @@ const STRINGS = {
     new_order: '+ Neue Bestellung',
     loading: 'Lade …',
     no_menu: 'Noch kein Menü konfiguriert',
+    menu_all: 'Alle Getränke',
   },
   en: {
     title: 'Order',
@@ -155,6 +163,7 @@ const STRINGS = {
     new_order: '+ New Order',
     loading: 'Loading …',
     no_menu: 'No menu configured yet',
+    menu_all: 'All drinks',
   },
 };
 
@@ -365,16 +374,34 @@ class GlpOrderCard extends HTMLElement {
     if (!this._menu || this._menu.length === 0) {
       return `<div class="loading">${_s('no_menu', lang)}</div>`;
     }
-    const items = this._menu.map(m => `
-      <div class="menu-item${this._selected === m.name ? ' selected' : ''}" data-item="${_esc(m.name)}">
+
+    const newThreshold = 7 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+
+    const renderItem = m => {
+      const isNew     = m.createdAt && (now - m.createdAt) < newThreshold;
+      const newBadge  = isNew     ? `<span class="menu-badge menu-badge-new">NEW</span>` : '';
+      const trendBadge = m.trending ? `<span class="menu-badge menu-badge-trend">🔥</span>` : '';
+      return `<div class="menu-item${this._selected === m.name ? ' selected' : ''}" data-item="${_esc(m.name)}">
         <div class="menu-item-emoji">${_esc(m.emoji)}</div>
-        <div class="menu-item-name">${_esc(m.name)}</div>
-      </div>`).join('');
+        <div class="menu-item-name">${_esc(m.name)}${trendBadge}${newBadge}</div>
+      </div>`;
+    };
+
+    const trending = this._menu.filter(m => m.trending);
+    const regular  = this._menu.filter(m => !m.trending);
+
+    const trendSection = trending.length ? `
+      <p class="menu-section-title">🔥 Trending</p>
+      <div class="menu-grid">${trending.map(renderItem).join('')}</div>` : '';
+    const regularSection = regular.length ? `
+      ${trending.length ? `<p class="menu-section-title" style="margin-top:10px">${_s('menu_all', lang)}</p>` : ''}
+      <div class="menu-grid">${regular.map(renderItem).join('')}</div>` : '';
 
     const btnLabel = this._selected ? _s('order_btn', lang, this._selected) : _s('order_btn_select', lang);
     return `
       <div class="order-form">
-        <div class="menu-grid">${items}</div>
+        ${trendSection}${regularSection}
         <input class="note-input" id="oc-note" placeholder="${_s('note_ph', lang)}" maxlength="200">
         <button class="order-btn" id="oc-submit" ${!this._selected || this._submitting ? 'disabled' : ''}>
           ${_esc(btnLabel)}
@@ -382,20 +409,44 @@ class GlpOrderCard extends HTMLElement {
       </div>`;
   }
 
-  _sparklineSvg(shot) {
-    const raw = shot?.datapoints?.pressure;
-    if (!Array.isArray(raw) || raw.length < 4) return '';
-    const vals = raw.map(v => v / 10);
-    const W = 240, H = 40, pad = 2;
-    const minV = Math.min(...vals), maxV = Math.max(...vals) || 1;
-    const pts = vals.map((v, i) => {
-      const x = pad + (i / (vals.length - 1)) * (W - pad * 2);
-      const y = H - pad - ((v - minV) / (maxV - minV)) * (H - pad * 2);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(' ');
-    return `<svg class="shot-sparkline" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
-      <polyline points="${pts}" fill="none" stroke="#3b82f6" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+  _shotChart(shot) {
+    const dp = shot?.datapoints;
+    if (!dp) return '';
+
+    const series = [
+      { key: 'pressure',   scale: 10, color: '#3b82f6', label: 'Druck' },
+      { key: 'weightFlow', scale: 10, color: '#22c55e', label: 'Flow' },
+      { key: 'shotWeight', scale: 10, color: '#a78bfa', label: 'Gewicht' },
+    ].map(s => ({ ...s, vals: Array.isArray(dp[s.key]) ? dp[s.key].map(v => v / s.scale) : [] }))
+     .filter(s => s.vals.length >= 4);
+
+    if (!series.length) return '';
+
+    const W = 300, H = 72, pad = 2;
+    const len = Math.max(...series.map(s => s.vals.length));
+
+    const polyline = (vals, color) => {
+      const minV = Math.min(...vals), maxV = Math.max(...vals);
+      const range = maxV - minV || 1;
+      const pts = vals.map((v, i) => {
+        const x = pad + (i / (len - 1)) * (W - pad * 2);
+        const y = H - pad - ((v - minV) / range) * (H - pad * 2);
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      }).join(' ');
+      return `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/>`;
+    };
+
+    const svg = `<svg class="shot-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      ${series.map(s => polyline(s.vals, s.color)).join('')}
     </svg>`;
+
+    const legend = `<div class="shot-chart-legend">
+      ${series.map(s => `<div class="shot-chart-legend-item">
+        <div class="shot-chart-legend-dot" style="background:${s.color}"></div>${s.label}
+      </div>`).join('')}
+    </div>`;
+
+    return svg + legend;
   }
 
   _renderShotSummary(shot, lang) {
@@ -405,11 +456,11 @@ class GlpOrderCard extends HTMLElement {
     const wtArr    = shot.datapoints?.shotWeight || shot.datapoints?.weight;
     const yield_g  = Array.isArray(wtArr) && wtArr.length ? `${(wtArr[wtArr.length - 1] / 10).toFixed(1)} g` : null;
     const meta     = [dur, yield_g].filter(Boolean).join(' · ');
-    const sparkline = this._sparklineSvg(shot);
+    const chart = this._shotChart(shot);
     return `<div class="shot-summary">
       <div class="shot-summary-profile">${_esc(profile)}</div>
       ${meta ? `<div class="shot-summary-meta">${_esc(meta)}</div>` : ''}
-      ${sparkline}
+      ${chart}
     </div>`;
   }
 
