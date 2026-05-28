@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.6.1';
+const GLP_ORDER_CARD_VERSION = '1.7.0';
 
 function _esc(s) {
   if (s == null) return '';
@@ -139,6 +139,7 @@ const STRINGS = {
     order_btn_select: 'Getränk auswählen',
     note_ph: 'Notiz (optional) …',
     pending: (item) => `⏳ ${item} — wartet auf Bestätigung`,
+    queue_pos: (pos, eta) => `Pos. ${pos} in der Warteschlange · ~${eta} Min`,
     accepted: (item, min) => `☕ ${item} — fertig in ~${min} Min`,
     done: (item) => `✓ ${item} ist fertig!`,
     declined: (item) => `✕ ${item} wurde abgelehnt`,
@@ -156,6 +157,7 @@ const STRINGS = {
     order_btn_select: 'Select a drink',
     note_ph: 'Note (optional) …',
     pending: (item) => `⏳ ${item} — waiting for confirmation`,
+    queue_pos: (pos, eta) => `Position ${pos} in queue · ~${eta} min`,
     accepted: (item, min) => `☕ ${item} — ready in ~${min} min`,
     done: (item) => `✓ ${item} is ready!`,
     declined: (item) => `✕ ${item} was declined`,
@@ -188,6 +190,7 @@ class GlpOrderCard extends HTMLElement {
     this._noteInteracting = false;
     this._pendingRender   = false;
     this._clickBlocked    = false;
+    this._queueEta        = null;
     this._clickBlockTimer = null;
     this._hassRenderTimer = null;
     this._lang = navigator.language.slice(0,2).toLowerCase();
@@ -275,10 +278,12 @@ class GlpOrderCard extends HTMLElement {
 
   async _load() {
     try {
-      const [menuRes, settingsRes] = await Promise.all([
+      const [menuRes, settingsRes, queueRes] = await Promise.all([
         this._fetch('api/orders/menu'),
         this._fetch('api/orders/settings'),
+        this._fetch('api/orders/queue-eta').catch(() => null),
       ]);
+      if (queueRes?.ok) this._queueEta = await queueRes.json().catch(() => null);
       if (menuRes.status === 404 && settingsRes.status === 404) {
         // Feature disabled at add-on level
         this._menu    = [];
@@ -477,8 +482,13 @@ class GlpOrderCard extends HTMLElement {
     const item = _esc(order.item);
 
     if (order.status === 'pending') {
+      const qp = this._queueEta?.positions?.[order.id];
+      const queueLine = qp
+        ? `<div class="status-line">${_esc(_s('queue_pos', lang, qp.position, qp.suggestedEta))}</div>`
+        : '';
       content = `<div class="status-card pending">
         <div class="status-item">${_esc(_s('pending', lang, order.item))}</div>
+        ${queueLine}
       </div>`;
     } else if (order.status === 'accepted') {
       const etaDone   = order.acceptedAt + order.eta * 60000;

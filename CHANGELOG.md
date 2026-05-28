@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.7.0] – 2026-05-28
+### Added
+- **Queue position** — when order is `pending`, the card now shows queue position and estimated wait time (e.g. "Pos. 2 in der Warteschlange · ~8 Min") sourced from new `GET /api/orders/queue-eta` endpoint (requires GLP add-on v1.70.0+); closes #12 (follow-up)
+
 ## [1.6.1] – 2026-05-28
 ### Fixed
 - Removed device selector (📱) from customer order form — device assignment is admin-only in the GLP barista backend; customers no longer see or interact with notify service selection; closes #12 (follow-up)
