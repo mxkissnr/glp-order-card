@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.7.0';
+const GLP_ORDER_CARD_VERSION = '1.7.1';
 
 function _esc(s) {
   if (s == null) return '';
@@ -198,7 +198,9 @@ class GlpOrderCard extends HTMLElement {
   }
 
   setConfig(config) {
-    this._config = { title: null, switch_entity: null, ...config };
+    this._config = { title: null, switch_entity: null, glp_token: null, ...config };
+    // Allow explicit token override in YAML for direct-URL mode
+    if (config.glp_token) this._token = String(config.glp_token);
   }
 
   _getBase() {
@@ -255,8 +257,11 @@ class GlpOrderCard extends HTMLElement {
   async _ensureToken() {
     if (this._useIngress()) return null; // ingress bypasses token check
     if (this._token) return this._token;
+    // /api/token is only served to Supervisor-originating requests or already-
+    // authenticated callers. In direct-URL mode the card is browser-originated
+    // (LAN IP) so this call will return 401. Users must set glp_token in YAML.
     try {
-      const d = await fetch(`${this._getBase()}/api/status`).then(r => r.json());
+      const d = await fetch(`${this._getBase()}/api/token`).then(r => r.ok ? r.json() : {});
       this._token = d.apiToken || null;
     } catch {}
     return this._token;

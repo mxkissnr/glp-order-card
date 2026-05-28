@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.7.1] – 2026-05-28
+### Changed
+- Token bootstrapping in direct-URL mode now calls `/api/token` instead of `/api/status` (GLP v1.72.0+); in direct-URL mode, add `glp_token: <your-token>` to the card YAML config as the token is no longer auto-discoverable from an unauthenticated endpoint; ingress mode (recommended, no `glp_url`) is unaffected
+
 ## [1.7.0] – 2026-05-28
 ### Added
 - **Queue position** — when order is `pending`, the card now shows queue position and estimated wait time (e.g. "Pos. 2 in der Warteschlange · ~8 Min") sourced from new `GET /api/orders/queue-eta` endpoint (requires GLP add-on v1.70.0+); closes #12 (follow-up)
