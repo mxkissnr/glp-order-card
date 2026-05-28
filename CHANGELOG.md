@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.6.0] – 2026-05-28
+### Added
+- **Device selector for push notifications** — optional collapsed 📱 section below the note input; customer picks their HA mobile device from a `<select>` populated via `/api/orders/notify-services`; last selection persisted in `localStorage`; `notifyService` included in POST body so the GLP add-on uses it for accept/done/declined notifications; section hidden when no devices are available; closes #12
+
 ## [1.5.1] – 2026-05-27
 ### Fixed
 - Menu item clicks no longer miss or flicker: `_render()` (full DOM replacement) is now blocked for 300 ms after any `pointerdown` inside the card — prevents HA state updates wiping the target element between `pointerdown` and `click`; closes #16
