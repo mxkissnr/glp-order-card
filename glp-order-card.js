@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.6.0';
+const GLP_ORDER_CARD_VERSION = '1.6.1';
 
 function _esc(s) {
   if (s == null) return '';
@@ -121,33 +121,6 @@ const STYLES = `
   .menu-badge-new { background: rgba(34,197,94,.2); color: #22c55e; border: 1px solid rgba(34,197,94,.3); }
   .menu-badge-trend { background: rgba(239,68,68,.15); color: #f87171; border: 1px solid rgba(239,68,68,.25); }
   .menu-section-title { font-size: .7rem; font-weight: 700; color: var(--oc-sub); letter-spacing: .06em; text-transform: uppercase; margin: 0 0 6px; }
-  /* Notify section */
-  .notify-section {
-    border: 1px solid var(--oc-border);
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  .notify-toggle {
-    width: 100%; padding: 8px 12px;
-    background: rgba(255,255,255,.04);
-    border: none; color: var(--oc-sub);
-    font-family: inherit; font-size: .82rem;
-    cursor: pointer; text-align: left;
-    display: flex; justify-content: space-between; align-items: center;
-    transition: color .15s;
-  }
-  .notify-toggle:hover { color: var(--oc-text); }
-  .notify-toggle.has-value { color: var(--oc-text); }
-  .notify-body { display: none; padding: 8px 12px; border-top: 1px solid var(--oc-border); }
-  .notify-body.open { display: block; }
-  .notify-select {
-    width: 100%; background: rgba(255,255,255,.05);
-    border: 1px solid var(--oc-border); border-radius: 6px;
-    color: var(--oc-text); font-family: inherit;
-    font-size: .82rem; padding: 6px 8px; outline: none;
-  }
-  .notify-select:focus { border-color: rgba(255,255,255,.25); }
-
   .new-order-btn {
     margin-top: 10px; background: none; border: 1px solid var(--oc-border);
     border-radius: 8px; color: var(--oc-sub); font-family: inherit;
@@ -174,8 +147,6 @@ const STRINGS = {
     loading: 'Lade …',
     no_menu: 'Noch kein Menü konfiguriert',
     menu_all: 'Alle Getränke',
-    notify_section: '📱 Benachrichtigung',
-    notify_none: '– Kein Gerät –',
   },
   en: {
     title: 'Order',
@@ -193,8 +164,6 @@ const STRINGS = {
     loading: 'Loading …',
     no_menu: 'No menu configured yet',
     menu_all: 'All drinks',
-    notify_section: '📱 Notification',
-    notify_none: '– No device –',
   },
 };
 
@@ -216,11 +185,9 @@ class GlpOrderCard extends HTMLElement {
     this._lastShot  = null;
     this._pollTimer = null;
     this._submitting = false;
-    this._noteInteracting  = false;
-    this._pendingRender    = false;
-    this._clickBlocked     = false;
-    this._notifyServices   = null;
-    this._notifyService    = localStorage.getItem('glp-oc-notify') || '';
+    this._noteInteracting = false;
+    this._pendingRender   = false;
+    this._clickBlocked    = false;
     this._clickBlockTimer = null;
     this._hassRenderTimer = null;
     this._lang = navigator.language.slice(0,2).toLowerCase();
@@ -308,10 +275,9 @@ class GlpOrderCard extends HTMLElement {
 
   async _load() {
     try {
-      const [menuRes, settingsRes, notifyRes] = await Promise.all([
+      const [menuRes, settingsRes] = await Promise.all([
         this._fetch('api/orders/menu'),
         this._fetch('api/orders/settings'),
-        this._fetch('api/orders/notify-services').catch(() => null),
       ]);
       if (menuRes.status === 404 && settingsRes.status === 404) {
         // Feature disabled at add-on level
@@ -324,17 +290,6 @@ class GlpOrderCard extends HTMLElement {
         this._enabled = settings?.enabled !== false;
       }
       // else: other non-ok (401, 500 …) — leave _menu = null so _loadStatus retries
-      if (notifyRes?.ok) {
-        const svcs = await notifyRes.json();
-        this._notifyServices = Array.isArray(svcs) ? svcs : [];
-        // Drop saved selection if it no longer exists
-        if (this._notifyService && !this._notifyServices.find(s => s.id === this._notifyService)) {
-          this._notifyService = '';
-          localStorage.removeItem('glp-oc-notify');
-        }
-      } else {
-        this._notifyServices = [];
-      }
     } catch { /* network error — keep this._menu = null so _loadStatus retries */ }
     await this._loadStatus(true);
     this._render();
@@ -452,37 +407,10 @@ class GlpOrderCard extends HTMLElement {
       <div class="menu-grid">${regular.map(renderItem).join('')}</div>` : '';
 
     const btnLabel = this._selected ? _s('order_btn', lang, this._selected) : _s('order_btn_select', lang);
-
-    let notifyHtml = '';
-    if (this._notifyServices && this._notifyServices.length > 0) {
-      const selectedName = this._notifyService
-        ? (this._notifyServices.find(s => s.id === this._notifyService)?.name || this._notifyService)
-        : null;
-      const toggleLabel = selectedName
-        ? `📱 ${_esc(selectedName)}`
-        : _s('notify_section', lang);
-      const options = this._notifyServices.map(s =>
-        `<option value="${_esc(s.id)}"${s.id === this._notifyService ? ' selected' : ''}>${_esc(s.name)}</option>`
-      ).join('');
-      notifyHtml = `
-        <div class="notify-section">
-          <button class="notify-toggle${selectedName ? ' has-value' : ''}" id="oc-notify-toggle">
-            <span>${toggleLabel}</span><span id="oc-notify-arrow">▸</span>
-          </button>
-          <div class="notify-body" id="oc-notify-body">
-            <select class="notify-select" id="oc-notify-select">
-              <option value="">${_s('notify_none', lang)}</option>
-              ${options}
-            </select>
-          </div>
-        </div>`;
-    }
-
     return `
       <div class="order-form">
         ${trendSection}${regularSection}
         <input class="note-input" id="oc-note" placeholder="${_s('note_ph', lang)}" maxlength="200">
-        ${notifyHtml}
         <button class="order-btn" id="oc-submit" ${!this._selected || this._submitting ? 'disabled' : ''}>
           ${_esc(btnLabel)}
         </button>
@@ -617,35 +545,6 @@ class GlpOrderCard extends HTMLElement {
         if (this._pendingRender) { this._pendingRender = false; this._render(); }
       });
     }
-    // Notify toggle
-    const notifyToggle = this.shadowRoot.getElementById('oc-notify-toggle');
-    if (notifyToggle) {
-      notifyToggle.addEventListener('click', () => {
-        const body  = this.shadowRoot.getElementById('oc-notify-body');
-        const arrow = this.shadowRoot.getElementById('oc-notify-arrow');
-        if (!body) return;
-        const open = body.classList.toggle('open');
-        if (arrow) arrow.textContent = open ? '▾' : '▸';
-      });
-    }
-    // Notify select change
-    const notifySelect = this.shadowRoot.getElementById('oc-notify-select');
-    if (notifySelect) {
-      notifySelect.addEventListener('change', () => {
-        this._notifyService = notifySelect.value;
-        if (this._notifyService) localStorage.setItem('glp-oc-notify', this._notifyService);
-        else localStorage.removeItem('glp-oc-notify');
-        // Update toggle label without full re-render
-        const toggle = this.shadowRoot.getElementById('oc-notify-toggle');
-        if (toggle) {
-          const svc = this._notifyServices?.find(s => s.id === this._notifyService);
-          const span = toggle.querySelector('span');
-          if (span) span.textContent = svc ? `📱 ${svc.name}` : _s('notify_section', this._lang);
-          toggle.classList.toggle('has-value', !!svc);
-        }
-      });
-    }
-
     // Submit
     const submitBtn = this.shadowRoot.getElementById('oc-submit');
     if (submitBtn) {
@@ -677,11 +576,10 @@ class GlpOrderCard extends HTMLElement {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          item:          this._selected,
+          item:     this._selected,
           note,
-          customer:      haUser.name,
-          haUserId:      haUser.id,
-          notifyService: this._notifyService || undefined,
+          customer: haUser.name,
+          haUserId: haUser.id,
         }),
       }).then(r => r.json());
 

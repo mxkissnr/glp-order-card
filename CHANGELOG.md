@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.6.1] – 2026-05-28
+### Fixed
+- Removed device selector (📱) from customer order form — device assignment is admin-only in the GLP barista backend; customers no longer see or interact with notify service selection; closes #12 (follow-up)
+
 ## [1.6.0] – 2026-05-28
 ### Added
 - **Device selector for push notifications** — optional collapsed 📱 section below the note input; customer picks their HA mobile device from a `<select>` populated via `/api/orders/notify-services`; last selection persisted in `localStorage`; `notifyService` included in POST body so the GLP add-on uses it for accept/done/declined notifications; section hidden when no devices are available; closes #12
