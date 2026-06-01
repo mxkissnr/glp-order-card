@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.9.0] – 2026-06-01
+### Added
+- **Bean library variants** — menu items with `useBeans: true` (toggled via 🫘 in GLP admin) now pull their variant list from the active bean library instead of manually entered strings; the card fetches `GET /api/orders/active-beans` on load and shows bean names (with " · Decaf" suffix when flagged) as the variant picker; requires GLP add-on v1.77.0+; closes mxkissnr/gaggiuino-local-profiler#139
+
 ## [1.8.0] – 2026-06-01
 ### Added
 - **Drink variants** — if a menu item has variants configured in GLP (e.g. Regular / Decaf), a variant picker appears after selecting the drink; submit button is disabled until a variant is chosen; variant is shown in all status messages (pending, accepted, done, declined) and sent to the GLP backend; requires GLP add-on v1.76.0+; closes mxkissnr/gaggiuino-local-profiler#137

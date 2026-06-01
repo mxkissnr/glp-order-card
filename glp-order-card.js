@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.8.0';
+const GLP_ORDER_CARD_VERSION = '1.9.0';
 
 function _esc(s) {
   if (s == null) return '';
@@ -199,6 +199,7 @@ class GlpOrderCard extends HTMLElement {
     this._enabled   = true;
     this._selected  = null;
     this._selectedVariant = null;
+    this._activeBeans = null;
     this._activeOrder = null;
     this._lastShot  = null;
     this._pollTimer = null;
@@ -314,6 +315,13 @@ class GlpOrderCard extends HTMLElement {
         const settings = await settingsRes.json();
         this._menu    = Array.isArray(menu) ? menu : [];
         this._enabled = settings?.enabled !== false;
+        // Fetch active beans if any menu item uses the bean library as variants
+        if (this._menu.some(m => m.useBeans)) {
+          try {
+            const br = await this._fetch('api/orders/active-beans');
+            this._activeBeans = br.ok ? await br.json() : [];
+          } catch { this._activeBeans = []; }
+        }
       }
       // else: other non-ok (401, 500 …) — leave _menu = null so _loadStatus retries
     } catch { /* network error — keep this._menu = null so _loadStatus retries */ }
@@ -433,7 +441,7 @@ class GlpOrderCard extends HTMLElement {
       <div class="menu-grid">${regular.map(renderItem).join('')}</div>` : '';
 
     const selectedItem = this._menu?.find(m => m.name === this._selected);
-    const variants = selectedItem?.variants || [];
+    const variants = this._getVariants(selectedItem);
     const needsVariant = variants.length > 0 && !this._selectedVariant;
     const variantSection = (this._selected && variants.length > 0) ? `
       <p class="variant-label">${_s('variant_label', lang)}</p>
@@ -606,9 +614,15 @@ class GlpOrderCard extends HTMLElement {
     }
   }
 
+  _getVariants(item) {
+    if (!item) return [];
+    if (item.useBeans) return (this._activeBeans || []).map(b => b.decaf ? `${b.name} · Decaf` : b.name);
+    return item.variants || [];
+  }
+
   _updateVariantPicker() {
     const selectedItem = this._menu?.find(m => m.name === this._selected);
-    const variants = selectedItem?.variants || [];
+    const variants = this._getVariants(selectedItem);
     const container = this.shadowRoot.querySelector('.order-form');
     if (!container) return;
     let vRow = this.shadowRoot.getElementById('oc-variants');
@@ -650,7 +664,7 @@ class GlpOrderCard extends HTMLElement {
 
   _updateSubmitBtn() {
     const selectedItem = this._menu?.find(m => m.name === this._selected);
-    const variants = selectedItem?.variants || [];
+    const variants = this._getVariants(selectedItem);
     const needsVariant = variants.length > 0 && !this._selectedVariant;
     const btn = this.shadowRoot.getElementById('oc-submit');
     if (!btn) return;
