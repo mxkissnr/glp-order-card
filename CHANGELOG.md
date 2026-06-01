@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.8.0] – 2026-06-01
+### Added
+- **Drink variants** — if a menu item has variants configured in GLP (e.g. Regular / Decaf), a variant picker appears after selecting the drink; submit button is disabled until a variant is chosen; variant is shown in all status messages (pending, accepted, done, declined) and sent to the GLP backend; requires GLP add-on v1.76.0+; closes mxkissnr/gaggiuino-local-profiler#137
+
 ## [1.7.1] – 2026-05-28
 ### Changed
 - Token bootstrapping in direct-URL mode now calls `/api/token` instead of `/api/status` (GLP v1.72.0+); in direct-URL mode, add `glp_token: <your-token>` to the card YAML config as the token is no longer auto-discoverable from an unauthenticated endpoint; ingress mode (recommended, no `glp_url`) is unaffected

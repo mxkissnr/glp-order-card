@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.7.1';
+const GLP_ORDER_CARD_VERSION = '1.8.0';
 
 function _esc(s) {
   if (s == null) return '';
@@ -128,6 +128,17 @@ const STYLES = `
   }
   .new-order-btn:hover { border-color: rgba(255,255,255,.25); color: var(--oc-text); }
   .loading { color: var(--oc-sub); font-size: .85rem; text-align: center; padding: 16px 0; }
+
+  /* Variant picker */
+  .variant-label { font-size: .72rem; font-weight: 700; color: var(--oc-sub); letter-spacing: .05em; text-transform: uppercase; margin: 2px 0 6px; }
+  .variant-grid { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
+  .variant-chip {
+    background: rgba(255,255,255,.04); border: 1px solid var(--oc-border);
+    border-radius: 20px; padding: 5px 14px; font-size: .8rem; cursor: pointer;
+    color: var(--oc-sub); transition: all .15s; user-select: none;
+  }
+  .variant-chip:hover { border-color: rgba(255,255,255,.2); color: var(--oc-text); }
+  .variant-chip.selected { border-color: var(--oc-amber); background: rgba(245,158,11,.12); color: var(--oc-text); font-weight: 600; }
 `;
 
 const STRINGS = {
@@ -137,6 +148,8 @@ const STRINGS = {
     paused: 'Bestellungen momentan pausiert',
     order_btn: (item) => `☕ ${item} bestellen`,
     order_btn_select: 'Getränk auswählen',
+    variant_select: 'Variante wählen',
+    variant_label: 'Variante',
     note_ph: 'Notiz (optional) …',
     pending: (item) => `⏳ ${item} — wartet auf Bestätigung`,
     queue_pos: (pos, eta) => `Pos. ${pos} in der Warteschlange · ~${eta} Min`,
@@ -155,6 +168,8 @@ const STRINGS = {
     paused: 'Orders are currently paused',
     order_btn: (item) => `☕ Order ${item}`,
     order_btn_select: 'Select a drink',
+    variant_select: 'Select variant',
+    variant_label: 'Variant',
     note_ph: 'Note (optional) …',
     pending: (item) => `⏳ ${item} — waiting for confirmation`,
     queue_pos: (pos, eta) => `Position ${pos} in queue · ~${eta} min`,
@@ -183,6 +198,7 @@ class GlpOrderCard extends HTMLElement {
     this._menu      = null;
     this._enabled   = true;
     this._selected  = null;
+    this._selectedVariant = null;
     this._activeOrder = null;
     this._lastShot  = null;
     this._pollTimer = null;
@@ -416,12 +432,26 @@ class GlpOrderCard extends HTMLElement {
       ${trending.length ? `<p class="menu-section-title" style="margin-top:10px">${_s('menu_all', lang)}</p>` : ''}
       <div class="menu-grid">${regular.map(renderItem).join('')}</div>` : '';
 
-    const btnLabel = this._selected ? _s('order_btn', lang, this._selected) : _s('order_btn_select', lang);
+    const selectedItem = this._menu?.find(m => m.name === this._selected);
+    const variants = selectedItem?.variants || [];
+    const needsVariant = variants.length > 0 && !this._selectedVariant;
+    const variantSection = (this._selected && variants.length > 0) ? `
+      <p class="variant-label">${_s('variant_label', lang)}</p>
+      <div class="variant-grid" id="oc-variants">
+        ${variants.map(v => `<div class="variant-chip${this._selectedVariant === v ? ' selected' : ''}" data-variant="${_esc(v)}">${_esc(v)}</div>`).join('')}
+      </div>` : '';
+    const itemLabel = (this._selected && this._selectedVariant)
+      ? `${this._selected} · ${this._selectedVariant}`
+      : this._selected || null;
+    const btnLabel = itemLabel ? _s('order_btn', lang, itemLabel)
+      : needsVariant ? _s('variant_select', lang)
+      : _s('order_btn_select', lang);
     return `
       <div class="order-form">
         ${trendSection}${regularSection}
+        ${variantSection}
         <input class="note-input" id="oc-note" placeholder="${_s('note_ph', lang)}" maxlength="200">
-        <button class="order-btn" id="oc-submit" ${!this._selected || this._submitting ? 'disabled' : ''}>
+        <button class="order-btn" id="oc-submit" ${!this._selected || this._submitting || needsVariant ? 'disabled' : ''}>
           ${_esc(btnLabel)}
         </button>
       </div>`;
@@ -484,7 +514,7 @@ class GlpOrderCard extends HTMLElement {
 
   _renderStatus(order, lang) {
     let content = '';
-    const item = _esc(order.item);
+    const itemLabel = order.variant ? `${order.item} · ${order.variant}` : order.item;
 
     if (order.status === 'pending') {
       const qp = this._queueEta?.positions?.[order.id];
@@ -492,24 +522,24 @@ class GlpOrderCard extends HTMLElement {
         ? `<div class="status-line">${_esc(_s('queue_pos', lang, qp.position, qp.suggestedEta))}</div>`
         : '';
       content = `<div class="status-card pending">
-        <div class="status-item">${_esc(_s('pending', lang, order.item))}</div>
+        <div class="status-item">${_esc(_s('pending', lang, itemLabel))}</div>
         ${queueLine}
       </div>`;
     } else if (order.status === 'accepted') {
       const etaDone   = order.acceptedAt + order.eta * 60000;
       const minsLeft  = Math.max(0, Math.ceil((etaDone - Date.now()) / 60000));
       content = `<div class="status-card accepted">
-        <div class="status-item">${_esc(_s('accepted', lang, order.item, minsLeft))}</div>
+        <div class="status-item">${_esc(_s('accepted', lang, itemLabel, minsLeft))}</div>
         <div class="status-eta">${minsLeft === 0 ? '🎉 Gleich fertig!' : `~${minsLeft} min`}</div>
       </div>`;
     } else if (order.status === 'done') {
       const shotHtml = this._renderShotSummary(this._lastShot, lang);
       content = `<div class="status-card done">
-        <div class="status-done-msg">${_esc(_s('done', lang, order.item))}</div>
+        <div class="status-done-msg">${_esc(_s('done', lang, itemLabel))}</div>
       </div>${shotHtml}`;
     } else if (order.status === 'declined') {
       content = `<div class="status-card declined">
-        <div class="status-item">${_esc(_s('declined', lang, order.item))}</div>
+        <div class="status-item">${_esc(_s('declined', lang, itemLabel))}</div>
         ${order.declineReason ? `<div class="status-decline">${_esc(_s('decline_reason', lang, order.declineReason))}</div>` : ''}
       </div>`;
     }
@@ -535,21 +565,20 @@ class GlpOrderCard extends HTMLElement {
     // Menu item selection — toggle CSS only, no full re-render
     this.shadowRoot.querySelectorAll('.menu-item').forEach(el => {
       el.addEventListener('click', () => {
+        const prev = this._selected;
         this._selected = this._selected === el.dataset.item ? null : el.dataset.item;
+        if (this._selected !== prev) this._selectedVariant = null;
         // Update selected state without replacing the DOM
         this.shadowRoot.querySelectorAll('.menu-item').forEach(m => {
           m.classList.toggle('selected', m.dataset.item === this._selected);
         });
-        // Update submit button label + disabled state
-        const btn = this.shadowRoot.getElementById('oc-submit');
-        if (btn) {
-          btn.textContent = this._selected
-            ? _s('order_btn', this._lang, this._selected)
-            : _s('order_btn_select', this._lang);
-          btn.disabled = !this._selected || this._submitting;
-        }
+        this._updateVariantPicker();
+        this._updateSubmitBtn();
       });
     });
+
+    // Variant chip selection
+    this._bindVariantChips();
 
     // Note input: block re-renders while user is typing
     const noteEl = this.shadowRoot.getElementById('oc-note');
@@ -569,10 +598,72 @@ class GlpOrderCard extends HTMLElement {
     const newBtn = this.shadowRoot.getElementById('oc-new-order');
     if (newBtn) {
       newBtn.addEventListener('click', () => {
-        this._activeOrder = null;
-        this._selected    = null;
+        this._activeOrder     = null;
+        this._selected        = null;
+        this._selectedVariant = null;
         this._render();
       });
+    }
+  }
+
+  _updateVariantPicker() {
+    const selectedItem = this._menu?.find(m => m.name === this._selected);
+    const variants = selectedItem?.variants || [];
+    const container = this.shadowRoot.querySelector('.order-form');
+    if (!container) return;
+    let vRow = this.shadowRoot.getElementById('oc-variants');
+    const vLabel = this.shadowRoot.querySelector('.variant-label');
+    if (variants.length === 0) {
+      if (vRow)   vRow.remove();
+      if (vLabel) vLabel.remove();
+      return;
+    }
+    if (!vRow) {
+      const label = document.createElement('p');
+      label.className = 'variant-label';
+      label.textContent = _s('variant_label', this._lang);
+      const grid = document.createElement('div');
+      grid.className = 'variant-grid';
+      grid.id = 'oc-variants';
+      const noteInput = this.shadowRoot.getElementById('oc-note');
+      container.insertBefore(label, noteInput);
+      container.insertBefore(grid, noteInput);
+      vRow = grid;
+    }
+    vRow.innerHTML = variants.map(v =>
+      `<div class="variant-chip${this._selectedVariant === v ? ' selected' : ''}" data-variant="${_esc(v)}">${_esc(v)}</div>`
+    ).join('');
+    this._bindVariantChips();
+  }
+
+  _bindVariantChips() {
+    this.shadowRoot.querySelectorAll('.variant-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        this._selectedVariant = this._selectedVariant === chip.dataset.variant ? null : chip.dataset.variant;
+        this.shadowRoot.querySelectorAll('.variant-chip').forEach(c => {
+          c.classList.toggle('selected', c.dataset.variant === this._selectedVariant);
+        });
+        this._updateSubmitBtn();
+      });
+    });
+  }
+
+  _updateSubmitBtn() {
+    const selectedItem = this._menu?.find(m => m.name === this._selected);
+    const variants = selectedItem?.variants || [];
+    const needsVariant = variants.length > 0 && !this._selectedVariant;
+    const btn = this.shadowRoot.getElementById('oc-submit');
+    if (!btn) return;
+    if (!this._selected) {
+      btn.textContent = _s('order_btn_select', this._lang);
+      btn.disabled = true;
+    } else if (needsVariant) {
+      btn.textContent = _s('variant_select', this._lang);
+      btn.disabled = true;
+    } else {
+      const itemLabel = this._selectedVariant ? `${this._selected} · ${this._selectedVariant}` : this._selected;
+      btn.textContent = _s('order_btn', this._lang, itemLabel);
+      btn.disabled = !!this._submitting;
     }
   }
 
@@ -592,6 +683,7 @@ class GlpOrderCard extends HTMLElement {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           item:     this._selected,
+          variant:  this._selectedVariant || undefined,
           note,
           customer: haUser.name,
           haUserId: haUser.id,
@@ -601,6 +693,7 @@ class GlpOrderCard extends HTMLElement {
       if (order.id) {
         this._activeOrder = order;
         this._selected    = null;
+        this._selectedVariant = null;
       }
     } catch {}
     this._submitting = false;
