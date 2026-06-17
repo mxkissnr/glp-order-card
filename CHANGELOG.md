@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.9.1] – 2026-06-17
+### Added
+- HACS validation workflow (`.github/workflows/validate.yml`) running the official `hacs/action` (`category: plugin`) — required for submission to the HACS default repository; closes #18
+- Validation status badge in README
+- GitHub repository topics for discoverability
+
 ## [1.9.0] – 2026-06-01
 ### Added
 - **Bean library variants** — menu items with `useBeans: true` (toggled via 🫘 in GLP admin) now pull their variant list from the active bean library instead of manually entered strings; the card fetches `GET /api/orders/active-beans` on load and shows bean names (with " · Decaf" suffix when flagged) as the variant picker; requires GLP add-on v1.77.0+; closes mxkissnr/gaggiuino-local-profiler#139

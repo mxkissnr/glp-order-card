@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.9.0';
+const GLP_ORDER_CARD_VERSION = '1.9.1';
 
 function _esc(s) {
   if (s == null) return '';
