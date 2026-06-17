@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.10.1] – 2026-06-17
+### Fixed
+- The shot-summary chart now plots the **temperature** curve (amber) — previously only pressure, weight-flow and weight were drawn, so the brew temperature was never shown; closes #22
+
 ## [1.10.0] – 2026-06-17
 ### Changed
 - **Visual redesign** to match the modern GLP Shot Card design language: unified premium dark palette (bg `#111113`, translucent white surfaces, accent `#ff3b30`, warm amber CTA), rounded surfaces (14–20px), subtle top-shimmer on menu tiles, gradient status cards, a gradient amber order button with hover lift, and tasteful micro-animations (fade-in status, pulsing ETA). Order logic (menu, variants, order flow, status, polling, REST proxy) is unchanged; closes #21

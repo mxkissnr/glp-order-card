@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.10.0';
+const GLP_ORDER_CARD_VERSION = '1.10.1';
 
 function _esc(s) {
   if (s == null) return '';
@@ -499,9 +499,10 @@ class GlpOrderCard extends HTMLElement {
     if (!dp) return '';
 
     const series = [
-      { key: 'pressure',   scale: 10, color: '#3b82f6', label: 'Druck' },
-      { key: 'weightFlow', scale: 10, color: '#22c55e', label: 'Flow' },
-      { key: 'shotWeight', scale: 10, color: '#a78bfa', label: 'Gewicht' },
+      { key: 'pressure',    scale: 10, color: '#3b82f6', label: 'Druck' },
+      { key: 'temperature', scale: 10, color: '#f59e0b', label: 'Temp' },
+      { key: 'weightFlow',  scale: 10, color: '#22c55e', label: 'Flow' },
+      { key: 'shotWeight',  scale: 10, color: '#a78bfa', label: 'Gewicht' },
     ].map(s => ({ ...s, vals: Array.isArray(dp[s.key]) ? dp[s.key].map(v => v / s.scale) : [] }))
      .filter(s => s.vals.length >= 4);
 
