@@ -24,7 +24,7 @@
 
 ## Prerequisites
 
-- [Gaggiuino Local Profiler](https://github.com/mxkissnr/gaggiuino-local-profiler) add-on v1.45.0 or later, installed and running
+- [Gaggiuino Local Profiler](https://github.com/mxkissnr/gaggiuino-local-profiler) app v1.45.0 or later, installed and running
 - The barista configures the menu in the new **Bestellungen** tab in the GLP web UI
 
 ## Installation via HACS
@@ -52,13 +52,13 @@ title: Bestellen                           # optional — card header title
 
 | Option | Description | Default |
 |---|---|---|
-| `glp_url` | URL of the GLP add-on (port 8099). Only needed when accessing from outside HA or if auto-detection fails. | *(auto via ingress)* |
+| `glp_url` | URL of the GLP app (port 8099). Only needed when accessing from outside HA or if auto-detection fails. | *(auto via ingress)* |
 | `switch_entity` | HA switch entity for the machine. Auto-detected from the `machine_status` sensor attribute if the GLP integration is installed. | *(auto)* |
 | `title` | Card header title | `Bestellen` / `Order` (auto-detected language) |
 
 ## How it works
 
-1. The card loads the drink menu from the GLP add-on (`GET /api/orders/menu`)
+1. The card loads the drink menu from the GLP app (`GET /api/orders/menu`)
 2. The customer selects a drink, optionally adds a note, and presses the order button
 3. The order is submitted with the logged-in HA user's name as customer identifier
 4. The card polls the order status every 10 seconds and updates automatically
@@ -77,7 +77,7 @@ Auto-detected from the browser locale. Currently supported: 🇩🇪 DE, 🇬�
 <p align="center">
   <a href="https://github.com/mxkissnr/gaggiuino-local-profiler/wiki">📖 Documentation (Wiki)</a> ·
   <a href="CHANGELOG.md">📋 Changelog</a> ·
-  <a href="https://github.com/mxkissnr/gaggiuino-local-profiler">🔧 GLP Add-on</a> ·
+  <a href="https://github.com/mxkissnr/gaggiuino-local-profiler">🔧 GLP App</a> ·
   <a href="https://github.com/mxkissnr/glp-lovelace-card">📊 GLP Shot Card</a> ·
   <a href="https://github.com/mxkissnr/glp-order-card/issues">🐛 Issues</a>
 </p>
@@ -90,7 +90,7 @@ GPL-3.0 © 2024–2026 mxkissnr — free to use, fork and modify; any derivative
 
 ## Acknowledgements
 
-Built on top of the [Gaggiuino](https://gaggiuino.github.io/) project and the [Gaggiuino Local Profiler](https://github.com/mxkissnr/gaggiuino-local-profiler) add-on.
+Built on top of the [Gaggiuino](https://gaggiuino.github.io/) project and the [Gaggiuino Local Profiler](https://github.com/mxkissnr/gaggiuino-local-profiler) app.
 
 ---
 

@@ -13,7 +13,7 @@ Bug reports, feature ideas and pull requests are welcome!
 
 Include:
 - Card version (visible in the browser console on HA startup)
-- GLP add-on version (the orders feature requires `enable_orders: true`)
+- GLP app version (the orders feature requires `enable_orders: true`)
 - Expected vs. actual behaviour
 - Browser console output if relevant
 
@@ -23,8 +23,8 @@ Include:
 |---|---|
 | File | Single JS file `glp-order-card.js` — no build step, no bundler |
 | Style | Vanilla ES2020, Web Components (`HTMLElement` + Shadow DOM) |
-| Backend | Communicates with GLP add-on `/api/orders/*` and `/api/menu` endpoints |
-| Testing | Load the card as a HACS custom resource with `enable_orders: true` in the add-on config |
+| Backend | Communicates with GLP app `/api/orders/*` and `/api/menu` endpoints |
+| Testing | Load the card as a HACS custom resource with `enable_orders: true` in the app config |
 
 ## Versioning
 

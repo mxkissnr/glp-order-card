@@ -18,9 +18,9 @@ I will acknowledge your report within **7 days** and aim to release a fix within
 
 ## Scope
 
-This card runs entirely in the browser as a Lovelace custom element. It communicates with the GLP add-on via the HA frontend proxy. The primary attack surface is:
+This card runs entirely in the browser as a Lovelace custom element. It communicates with the GLP app via the HA frontend proxy. The primary attack surface is:
 
 - `esc()` output in innerHTML — all user-supplied strings are HTML-escaped
-- Order data rendered from the add-on API — validated and escaped before display
+- Order data rendered from the app API — validated and escaped before display
 
-Out of scope: vulnerabilities in Home Assistant or the GLP add-on itself (report those in their respective repositories).
+Out of scope: vulnerabilities in Home Assistant or the GLP app itself (report those in their respective repositories).
