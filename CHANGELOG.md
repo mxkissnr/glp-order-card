@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.10.0] – 2026-06-17
+### Changed
+- **Visual redesign** to match the modern GLP Shot Card design language: unified premium dark palette (bg `#111113`, translucent white surfaces, accent `#ff3b30`, warm amber CTA), rounded surfaces (14–20px), subtle top-shimmer on menu tiles, gradient status cards, a gradient amber order button with hover lift, and tasteful micro-animations (fade-in status, pulsing ETA). Order logic (menu, variants, order flow, status, polling, REST proxy) is unchanged; closes #21
+
 ## [1.9.1] – 2026-06-17
 ### Added
 - HACS validation workflow (`.github/workflows/validate.yml`) running the official `hacs/action` (`category: plugin`) — required for submission to the HACS default repository; closes #18
