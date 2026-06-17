@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/mxkissnr/gaggiuino-local-profiler/main/gaggiuino-local-profiler/logo.svg" alt="GLP Order Card" width="480"/>
+  <img src="logo.svg" alt="GLP Order Card" width="480"/>
 </p>
 
 <p align="center">
