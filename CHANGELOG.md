@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.10.2] – 2026-06-17
+### Fixed
+- The card no longer flickers while an order status is shown — redundant full re-renders from status polling / hass ticks are skipped via a view-state signature; the DOM is only rebuilt when something visible changes; closes #23
+
 ## [1.10.1] – 2026-06-17
 ### Fixed
 - The shot-summary chart now plots the **temperature** curve (amber) — previously only pressure, weight-flow and weight were drawn, so the brew temperature was never shown; closes #22

@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.10.1';
+const GLP_ORDER_CARD_VERSION = '1.10.2';
 
 function _esc(s) {
   if (s == null) return '';
@@ -409,6 +409,21 @@ class GlpOrderCard extends HTMLElement {
     const lang  = this._lang;
     const title = this._config.title || _s('title', lang);
     const off   = this._machineOff();
+
+    // Skip redundant full re-renders (polling/hass ticks) — only rebuild the DOM
+    // when something user-visible actually changed. Prevents flicker on the status view.
+    const o = this._activeOrder;
+    const minsLeft = o?.status === 'accepted'
+      ? Math.max(0, Math.ceil((o.acceptedAt + o.eta * 60000 - Date.now()) / 60000)) : null;
+    const sig = JSON.stringify([
+      off, this._enabled, this._menu ? this._menu.length : -1,
+      this._selected, this._selectedVariant, this._submitting,
+      o && [o.id, o.status], minsLeft, this._lastShot?.id ?? null,
+      this._queueEta?.positions?.[o?.id]?.position ?? null,
+      title, lang,
+    ]);
+    if (sig === this._lastRenderSig) return;
+    this._lastRenderSig = sig;
 
     let body = '';
 
