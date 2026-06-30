@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.10.2';
+const GLP_ORDER_CARD_VERSION = '1.11.0';
 
 function _esc(s) {
   if (s == null) return '';
@@ -420,7 +420,7 @@ class GlpOrderCard extends HTMLElement {
       this._selected, this._selectedVariant, this._submitting,
       o && [o.id, o.status], minsLeft, this._lastShot?.id ?? null,
       this._queueEta?.positions?.[o?.id]?.position ?? null,
-      title, lang,
+      title, lang, this._activeBeans?.length ?? -1,
     ]);
     if (sig === this._lastRenderSig) return;
     this._lastRenderSig = sig;
@@ -461,6 +461,14 @@ class GlpOrderCard extends HTMLElement {
       return `<div class="loading">${_s('no_menu', lang)}</div>`;
     }
 
+    // Hide useBeans items when no active beans are in stock
+    const visibleMenu = this._menu.filter(m =>
+      !m.useBeans || (Array.isArray(this._activeBeans) && this._activeBeans.length > 0)
+    );
+    if (visibleMenu.length === 0) {
+      return `<div class="loading">${_s('no_menu', lang)}</div>`;
+    }
+
     const newThreshold = 7 * 24 * 60 * 60 * 1000;
     const now = Date.now();
 
@@ -474,8 +482,8 @@ class GlpOrderCard extends HTMLElement {
       </div>`;
     };
 
-    const trending = this._menu.filter(m => m.trending);
-    const regular  = this._menu.filter(m => !m.trending);
+    const trending = visibleMenu.filter(m => m.trending);
+    const regular  = visibleMenu.filter(m => !m.trending);
 
     const trendSection = trending.length ? `
       <p class="menu-section-title">🔥 Trending</p>
@@ -484,7 +492,7 @@ class GlpOrderCard extends HTMLElement {
       ${trending.length ? `<p class="menu-section-title" style="margin-top:10px">${_s('menu_all', lang)}</p>` : ''}
       <div class="menu-grid">${regular.map(renderItem).join('')}</div>` : '';
 
-    const selectedItem = this._menu?.find(m => m.name === this._selected);
+    const selectedItem = visibleMenu.find(m => m.name === this._selected);
     const variants = this._getVariants(selectedItem);
     const needsVariant = variants.length > 0 && !this._selectedVariant;
     const variantSection = (this._selected && variants.length > 0) ? `
