@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.12.0] – 2026-07-03
+### Added
+- Bean description info box — selecting a bean variant shows the bean's taste notes, origin and processing from the coffee library (served by app v1.95.0+ via `/api/orders/active-beans`), so customers can see what characterizes the coffee; closes #24
+
+## [1.11.0] – 2026-06-30
+### Added
+- Menu items backed by the bean library (`useBeans`) are hidden when no active beans are in stock (retroactive entry — the version bump shipped without a changelog note)
+
 ## [1.10.2] – 2026-06-17
 ### Fixed
 - The card no longer flickers while an order status is shown — redundant full re-renders from status polling / hass ticks are skipped via a view-state signature; the DOM is only rebuilt when something visible changes; closes #23

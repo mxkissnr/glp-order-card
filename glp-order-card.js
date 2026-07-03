@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.11.0';
+const GLP_ORDER_CARD_VERSION = '1.12.0';
 
 function _esc(s) {
   if (s == null) return '';
@@ -168,6 +168,19 @@ const STYLES = `
   }
   .variant-chip:hover { border-color: rgba(255,255,255,.2); color: var(--oc-text); }
   .variant-chip.selected { border-color: rgba(255,159,10,.55); background: rgba(255,159,10,.14); color: var(--oc-text); font-weight: 700; }
+
+  /* Bean description info box (shown when a bean variant is selected) */
+  .bean-info {
+    background: var(--oc-surface); border: 1px solid var(--oc-border);
+    border-radius: 10px; padding: 9px 12px; margin: 2px 0 6px;
+    font-size: .74rem; line-height: 1.45; color: var(--oc-sub);
+  }
+  .bean-info-notes { color: var(--oc-text); font-style: italic; margin-bottom: 3px; }
+  .bean-info-row { display: flex; gap: 6px; }
+  .bean-info-label {
+    font-weight: 800; font-size: .6rem; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--oc-sub); flex-shrink: 0; padding-top: 1px;
+  }
 `;
 
 const STRINGS = {
@@ -179,6 +192,8 @@ const STRINGS = {
     order_btn_select: 'Getränk auswählen',
     variant_select: 'Variante wählen',
     variant_label: 'Variante',
+    bean_origin: 'Herkunft',
+    bean_process: 'Aufbereitung',
     note_ph: 'Notiz (optional) …',
     pending: (item) => `⏳ ${item} — wartet auf Bestätigung`,
     queue_pos: (pos, eta) => `Pos. ${pos} in der Warteschlange · ~${eta} Min`,
@@ -199,6 +214,8 @@ const STRINGS = {
     order_btn_select: 'Select a drink',
     variant_select: 'Select variant',
     variant_label: 'Variant',
+    bean_origin: 'Origin',
+    bean_process: 'Process',
     note_ph: 'Note (optional) …',
     pending: (item) => `⏳ ${item} — waiting for confirmation`,
     queue_pos: (pos, eta) => `Position ${pos} in queue · ~${eta} min`,
@@ -500,6 +517,7 @@ class GlpOrderCard extends HTMLElement {
       <div class="variant-grid" id="oc-variants">
         ${variants.map(v => `<div class="variant-chip${this._selectedVariant === v ? ' selected' : ''}" data-variant="${_esc(v)}">${_esc(v)}</div>`).join('')}
       </div>` : '';
+    const beanInfoSection = this._beanInfoHtml(this._getSelectedBean(), lang);
     const itemLabel = (this._selected && this._selectedVariant)
       ? `${this._selected} · ${this._selectedVariant}`
       : this._selected || null;
@@ -509,7 +527,7 @@ class GlpOrderCard extends HTMLElement {
     return `
       <div class="order-form">
         ${trendSection}${regularSection}
-        ${variantSection}
+        ${variantSection}${beanInfoSection}
         <input class="note-input" id="oc-note" placeholder="${_s('note_ph', lang)}" maxlength="200">
         <button class="order-btn" id="oc-submit" ${!this._selected || this._submitting || needsVariant ? 'disabled' : ''}>
           ${_esc(btnLabel)}
@@ -673,6 +691,35 @@ class GlpOrderCard extends HTMLElement {
     return item.variants || [];
   }
 
+  _getSelectedBean() {
+    const selectedItem = this._menu?.find(m => m.name === this._selected);
+    if (!selectedItem?.useBeans || !this._selectedVariant) return null;
+    return (this._activeBeans || []).find(b =>
+      (b.decaf ? `${b.name} · Decaf` : b.name) === this._selectedVariant
+    ) || null;
+  }
+
+  _beanInfoHtml(bean, lang) {
+    if (!bean || (!bean.notes && !bean.origin && !bean.process)) return '';
+    const rows = [];
+    if (bean.notes)   rows.push(`<div class="bean-info-notes">${_esc(bean.notes)}</div>`);
+    if (bean.origin)  rows.push(`<div class="bean-info-row"><span class="bean-info-label">${_s('bean_origin', lang)}</span><span>${_esc(bean.origin)}</span></div>`);
+    if (bean.process) rows.push(`<div class="bean-info-row"><span class="bean-info-label">${_s('bean_process', lang)}</span><span>${_esc(bean.process)}</span></div>`);
+    return `<div class="bean-info" id="oc-bean-info">${rows.join('')}</div>`;
+  }
+
+  _updateBeanInfo() {
+    const container = this.shadowRoot.querySelector('.order-form');
+    if (!container) return;
+    const existing = this.shadowRoot.getElementById('oc-bean-info');
+    const html = this._beanInfoHtml(this._getSelectedBean(), this._lang);
+    if (!html) { if (existing) existing.remove(); return; }
+    if (existing) { existing.outerHTML = html; return; }
+    const tpl = document.createElement('template');
+    tpl.innerHTML = html;
+    container.insertBefore(tpl.content.firstElementChild, this.shadowRoot.getElementById('oc-note'));
+  }
+
   _updateVariantPicker() {
     const selectedItem = this._menu?.find(m => m.name === this._selected);
     const variants = this._getVariants(selectedItem);
@@ -683,6 +730,7 @@ class GlpOrderCard extends HTMLElement {
     if (variants.length === 0) {
       if (vRow)   vRow.remove();
       if (vLabel) vLabel.remove();
+      this._updateBeanInfo();
       return;
     }
     if (!vRow) {
@@ -701,6 +749,7 @@ class GlpOrderCard extends HTMLElement {
       `<div class="variant-chip${this._selectedVariant === v ? ' selected' : ''}" data-variant="${_esc(v)}">${_esc(v)}</div>`
     ).join('');
     this._bindVariantChips();
+    this._updateBeanInfo();
   }
 
   _bindVariantChips() {
@@ -711,6 +760,7 @@ class GlpOrderCard extends HTMLElement {
           c.classList.toggle('selected', c.dataset.variant === this._selectedVariant);
         });
         this._updateSubmitBtn();
+        this._updateBeanInfo();
       });
     });
   }

@@ -59,12 +59,13 @@ title: Bestellen                           # optional — card header title
 ## How it works
 
 1. The card loads the drink menu from the GLP app (`GET /api/orders/menu`)
-2. The customer selects a drink, optionally adds a note, and presses the order button
-3. The order is submitted with the logged-in HA user's name as customer identifier
-4. The card polls the order status every 10 seconds and updates automatically
-5. When the barista accepts the order, the card shows the ETA countdown
-6. When done, the card shows a "Ready!" confirmation
-7. The customer can then place a new order
+2. For drinks backed by the coffee library, bean variants come from `GET /api/orders/active-beans` — only beans actually still in stock are offered, and selecting a bean shows its description (taste notes, origin, processing) so the customer knows what characterizes the coffee
+3. The customer selects a drink, optionally adds a note, and presses the order button
+4. The order is submitted with the logged-in HA user's name as customer identifier
+5. The card polls the order status every 10 seconds and updates automatically
+6. When the barista accepts the order, the card shows the ETA countdown
+7. When done, the card shows a "Ready!" confirmation
+8. The customer can then place a new order
 
 The barista manages orders from the **Bestellungen** tab in the GLP web UI.
 
