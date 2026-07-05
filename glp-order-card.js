@@ -1,8 +1,22 @@
-const GLP_ORDER_CARD_VERSION = '1.12.0';
+const GLP_ORDER_CARD_VERSION = '1.13.0';
+
+// Menu items younger than this show the NEW badge (config: new_badge_days)
+const NEW_BADGE_DAYS_DEFAULT = 7;
 
 function _esc(s) {
   if (s == null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// Origin: since GLP app 1.96.0 an ISO 3166-1 alpha-2 code — render flag emoji
+// + localized country name; legacy free-text values render as-is.
+function _originHtml(origin, lang) {
+  if (typeof origin !== 'string' || !/^[A-Z]{2}$/.test(origin.trim())) return _esc(origin);
+  const code = origin.trim();
+  const flag = String.fromCodePoint(...[...code].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+  let name = code;
+  try { name = new Intl.DisplayNames([lang || 'en'], { type: 'region' }).of(code) || code; } catch {}
+  return `${flag} ${_esc(name)}`;
 }
 
 function _safeUrl(url) {
@@ -193,7 +207,9 @@ const STRINGS = {
     variant_select: 'Variante wählen',
     variant_label: 'Variante',
     bean_origin: 'Herkunft',
+    bean_variety: 'Varietät',
     bean_process: 'Aufbereitung',
+    almost_ready: '🎉 Gleich fertig!',
     note_ph: 'Notiz (optional) …',
     pending: (item) => `⏳ ${item} — wartet auf Bestätigung`,
     queue_pos: (pos, eta) => `Pos. ${pos} in der Warteschlange · ~${eta} Min`,
@@ -215,7 +231,9 @@ const STRINGS = {
     variant_select: 'Select variant',
     variant_label: 'Variant',
     bean_origin: 'Origin',
+    bean_variety: 'Variety',
     bean_process: 'Process',
+    almost_ready: '🎉 Almost ready!',
     note_ph: 'Note (optional) …',
     pending: (item) => `⏳ ${item} — waiting for confirmation`,
     queue_pos: (pos, eta) => `Position ${pos} in queue · ~${eta} min`,
@@ -486,7 +504,7 @@ class GlpOrderCard extends HTMLElement {
       return `<div class="loading">${_s('no_menu', lang)}</div>`;
     }
 
-    const newThreshold = 7 * 24 * 60 * 60 * 1000;
+    const newThreshold = (parseFloat(this._config?.new_badge_days) || NEW_BADGE_DAYS_DEFAULT) * 24 * 60 * 60 * 1000;
     const now = Date.now();
 
     const renderItem = m => {
@@ -609,7 +627,7 @@ class GlpOrderCard extends HTMLElement {
       const minsLeft  = Math.max(0, Math.ceil((etaDone - Date.now()) / 60000));
       content = `<div class="status-card accepted">
         <div class="status-item">${_esc(_s('accepted', lang, itemLabel, minsLeft))}</div>
-        <div class="status-eta">${minsLeft === 0 ? '🎉 Gleich fertig!' : `~${minsLeft} min`}</div>
+        <div class="status-eta">${minsLeft === 0 ? _s('almost_ready', this._lang) : `~${minsLeft} min`}</div>
       </div>`;
     } else if (order.status === 'done') {
       const shotHtml = this._renderShotSummary(this._lastShot, lang);
@@ -700,10 +718,11 @@ class GlpOrderCard extends HTMLElement {
   }
 
   _beanInfoHtml(bean, lang) {
-    if (!bean || (!bean.notes && !bean.origin && !bean.process)) return '';
+    if (!bean || (!bean.notes && !bean.origin && !bean.variety && !bean.process)) return '';
     const rows = [];
     if (bean.notes)   rows.push(`<div class="bean-info-notes">${_esc(bean.notes)}</div>`);
-    if (bean.origin)  rows.push(`<div class="bean-info-row"><span class="bean-info-label">${_s('bean_origin', lang)}</span><span>${_esc(bean.origin)}</span></div>`);
+    if (bean.origin)  rows.push(`<div class="bean-info-row"><span class="bean-info-label">${_s('bean_origin', lang)}</span><span>${_originHtml(bean.origin, lang)}</span></div>`);
+    if (bean.variety) rows.push(`<div class="bean-info-row"><span class="bean-info-label">${_s('bean_variety', lang)}</span><span>${_esc(bean.variety)}</span></div>`);
     if (bean.process) rows.push(`<div class="bean-info-row"><span class="bean-info-label">${_s('bean_process', lang)}</span><span>${_esc(bean.process)}</span></div>`);
     return `<div class="bean-info" id="oc-bean-info">${rows.join('')}</div>`;
   }
@@ -819,7 +838,6 @@ class GlpOrderCard extends HTMLElement {
 
   getCardSize() { return 3; }
 
-  static getConfigElement() { return document.createElement('glp-order-card-editor'); }
   static getStubConfig()    { return {}; }
 }
 

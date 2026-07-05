@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.13.0] – 2026-07-05
+### Added
+- **Variety row in the bean info box** — `active-beans` ships the bean's variety since app v1.96.0 (Arabica, Geisha, …); shown between origin and processing; closes #25
+- **Localized origin country** — origin ISO codes (structured origin field, app v1.96.0+) render as flag emoji + country name in the card language via `Intl.DisplayNames`; legacy free-text origins render unchanged; closes #25
+- **`new_badge_days` config option** — how long menu items show the NEW badge (default 7 days, previously hardcoded); closes #25
+
+### Fixed
+- `'🎉 Gleich fertig!'` bypassed the STRINGS table and appeared in German for English users — now localized (`almost_ready`); closes #25
+- Removed `getConfigElement()` referencing the never-defined `glp-order-card-editor` element; closes #25
+
 ## [1.12.0] – 2026-07-03
 ### Added
 - Bean description info box — selecting a bean variant shows the bean's taste notes, origin and processing from the coffee library (served by app v1.95.0+ via `/api/orders/active-beans`), so customers can see what characterizes the coffee; closes #24

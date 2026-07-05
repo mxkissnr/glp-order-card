@@ -55,11 +55,12 @@ title: Bestellen                           # optional — card header title
 | `glp_url` | URL of the GLP app (port 8099). Only needed when accessing from outside HA or if auto-detection fails. | *(auto via ingress)* |
 | `switch_entity` | HA switch entity for the machine. Auto-detected from the `machine_status` sensor attribute if the GLP integration is installed. | *(auto)* |
 | `title` | Card header title | `Bestellen` / `Order` (auto-detected language) |
+| `new_badge_days` | How many days newly added menu items show the NEW badge | `7` |
 
 ## How it works
 
 1. The card loads the drink menu from the GLP app (`GET /api/orders/menu`)
-2. For drinks backed by the coffee library, bean variants come from `GET /api/orders/active-beans` — only beans actually still in stock are offered, and selecting a bean shows its description (taste notes, origin, processing) so the customer knows what characterizes the coffee
+2. For drinks backed by the coffee library, bean variants come from `GET /api/orders/active-beans` — only beans actually still in stock are offered, and selecting a bean shows its description (taste notes, origin with flag + localized country name, variety, processing) so the customer knows what characterizes the coffee
 3. The customer selects a drink, optionally adds a note, and presses the order button
 4. The order is submitted with the logged-in HA user's name as customer identifier
 5. The card polls the order status every 10 seconds and updates automatically
