@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+### Added
+- Test suite (`test/`, Node's built-in `node:test`, no new dependency) covering `_esc()` and `_safeUrl()` — the card's HTML-escaping and URL-scheme guards — against script/quote-injection payloads and `javascript:`/`data:` URLs. The tests load the real `glp-order-card.js` in a sandboxed `vm` context rather than reimplementing the logic, matching the approach used for glp-lovelace-card. CI gained a `test` job (`npm test` + a syntax-check build step) in `.github/workflows/validate.yml` alongside the existing HACS validation. Closes #26
+
 ## [1.13.0] – 2026-07-05
 ### Added
 - **Variety row in the bean info box** — `active-beans` ships the bean's variety since app v1.96.0 (Arabica, Geisha, …); shown between origin and processing; closes #25
