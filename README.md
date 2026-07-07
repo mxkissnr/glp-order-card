@@ -20,6 +20,10 @@
   Customers browse the menu, place an order and track its status in real time — all from a Home Assistant dashboard.
 </p>
 
+<p align="center">
+  Part of the <a href="https://github.com/mxkissnr/gaggiuino-local-profiler">GLP ecosystem</a> — requires a <a href="https://gaggiuino.github.io/">Gaggiuino</a>-modified espresso machine and the GLP App.
+</p>
+
 ---
 
 ## Prerequisites
@@ -97,5 +101,5 @@ Built on top of the [Gaggiuino](https://gaggiuino.github.io/) project and the [G
 ---
 
 <p align="center">
-  <sub>Built with <a href="https://claude.ai/code">Claude Code</a> by Anthropic</sub>
+  <sub>Built with <a href="https://claude.ai/code">Claude Code</a> by Anthropic — see <a href="https://github.com/mxkissnr/gaggiuino-local-profiler/blob/main/DEVELOPMENT.md">DEVELOPMENT.md</a> for full transparency and model stats.</sub>
 </p>
