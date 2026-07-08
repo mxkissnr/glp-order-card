@@ -2,7 +2,7 @@
   "name": "glp-order-card",
   "private": true,
   "scripts": {
-    "test": "node --test \"test/**/*.test.js\"",
+    "test": "node --test",
     "build": "node --check glp-order-card.js"
   }
 }
