@@ -26,6 +26,16 @@
 
 ---
 
+## 📸 Screenshot
+
+<p align="center">
+  <img src="docs/screenshots/card.png" alt="GLP Order Card showing the drink menu, a selected bean-library variant with taste notes/origin/process, and the order button" width="360"/>
+</p>
+
+Regenerated on demand via `node scripts/screenshot.mjs` (demo data, no real backend required).
+
+---
+
 ## Prerequisites
 
 - [Gaggiuino Local Profiler](https://github.com/mxkissnr/gaggiuino-local-profiler) app v1.45.0 or later, installed and running
