@@ -2,6 +2,7 @@
 
 ## Unreleased
 ### Added
+- **IT/FR/ES/NL translations.** The STRINGS-based i18n table now covers all 6 GLP UI languages; the existing `hass.language` lookup already falls back generically to English for any unsupported language, no detection-logic changes needed. `glp-order-card.js`. Closes #27
 - Test suite (`test/`, Node's built-in `node:test`, no new dependency) covering `_esc()` and `_safeUrl()` — the card's HTML-escaping and URL-scheme guards — against script/quote-injection payloads and `javascript:`/`data:` URLs. The tests load the real `glp-order-card.js` in a sandboxed `vm` context rather than reimplementing the logic, matching the approach used for glp-lovelace-card. CI gained a `test` job (`npm test` + a syntax-check build step) in `.github/workflows/validate.yml` alongside the existing HACS validation. Closes #26
 - README screenshot (`docs/screenshots/card.png`) showing a populated menu with trending/NEW badges, a selected bean-library variant and its taste-note/origin/process info box. Regenerated on demand via `npm run screenshot` (`scripts/screenshot.mjs`), a throwaway Playwright + `http.createServer` harness that mocks `api/orders/*` with realistic demo data — no real GLP backend needed. Adds `playwright` as a devDependency.
 
