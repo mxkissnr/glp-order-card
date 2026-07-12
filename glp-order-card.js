@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.14.0';
+const GLP_ORDER_CARD_VERSION = '1.15.0';
 
 // Menu items younger than this show the NEW badge (config: new_badge_days)
 const NEW_BADGE_DAYS_DEFAULT = 7;
@@ -9,14 +9,22 @@ function _esc(s) {
 }
 
 // Origin: since GLP app 1.96.0 an ISO 3166-1 alpha-2 code — render flag emoji
-// + localized country name; legacy free-text values render as-is.
-function _originHtml(origin, lang) {
-  if (typeof origin !== 'string' || !/^[A-Z]{2}$/.test(origin.trim())) return _esc(origin);
-  const code = origin.trim();
-  const flag = String.fromCodePoint(...[...code].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
-  let name = code;
-  try { name = new Intl.DisplayNames([lang || 'en'], { type: 'region' }).of(code) || code; } catch {}
-  return `${flag} ${_esc(name)}`;
+// + localized country name; legacy free-text values render as-is. Since GLP
+// app 1.120.0 a bean can have multiple origins (a blend, each with an
+// optional weighting percent) — `origins` here is always an array of
+// {code, percent?}; a single origin is just the one-element case. Mirrors
+// originDisplay() in the app's own public-src/views/library.js.
+function _originHtml(origins, lang) {
+  return origins.map(o => {
+    const raw = o?.code;
+    if (typeof raw !== 'string' || !/^[A-Z]{2}$/.test(raw.trim())) return _esc(raw);
+    const code = raw.trim();
+    const flag = String.fromCodePoint(...[...code].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+    let name = code;
+    try { name = new Intl.DisplayNames([lang || 'en'], { type: 'region' }).of(code) || code; } catch {}
+    const label = `${flag} ${_esc(name)}`;
+    return o.percent != null ? `${label} ${o.percent}%` : label;
+  }).join(' + ');
 }
 
 function _safeUrl(url) {
@@ -814,10 +822,13 @@ class GlpOrderCard extends HTMLElement {
   }
 
   _beanInfoHtml(bean, lang) {
-    if (!bean || (!bean.notes && !bean.origin && !bean.variety && !bean.process)) return '';
+    const origins = Array.isArray(bean?.origins) && bean.origins.length
+      ? bean.origins
+      : (bean?.origin ? [{ code: bean.origin }] : []);
+    if (!bean || (!bean.notes && !origins.length && !bean.variety && !bean.process)) return '';
     const rows = [];
-    if (bean.notes)   rows.push(`<div class="bean-info-notes">${_esc(bean.notes)}</div>`);
-    if (bean.origin)  rows.push(`<div class="bean-info-row"><span class="bean-info-label">${_s('bean_origin', lang)}</span><span>${_originHtml(bean.origin, lang)}</span></div>`);
+    if (bean.notes)      rows.push(`<div class="bean-info-notes">${_esc(bean.notes)}</div>`);
+    if (origins.length)  rows.push(`<div class="bean-info-row"><span class="bean-info-label">${_s('bean_origin', lang)}</span><span>${_originHtml(origins, lang)}</span></div>`);
     if (bean.variety) rows.push(`<div class="bean-info-row"><span class="bean-info-label">${_s('bean_variety', lang)}</span><span>${_esc(bean.variety)}</span></div>`);
     if (bean.process) rows.push(`<div class="bean-info-row"><span class="bean-info-label">${_s('bean_process', lang)}</span><span>${_esc(bean.process)}</span></div>`);
     return `<div class="bean-info" id="oc-bean-info">${rows.join('')}</div>`;

@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.15.0] – 2026-07-12
+### Added
+- **Blend bean origins.** The backend (gaggiuino-local-profiler v1.120.0) now exposes a bean's full multi-origin data as `origins[]` (`{code, percent?}`) on `/api/orders/active-beans`, in addition to the legacy single-string `origin`. `_originHtml`/`_beanInfoHtml` now render every origin (flag + localized country name + optional percent, joined with " + "), mirroring the `originDisplay()` pattern already used in the app's own frontend. Falls back to the previous single-origin rendering when the backend doesn't send `origins[]` yet (older add-on versions), so this is non-breaking in both directions. `glp-order-card.js`, `test/origin-html.test.js` (new). Closes #28
+
 ## [1.14.0] – 2026-07-10
 ### Added
 - **IT/FR/ES/NL translations.** The STRINGS-based i18n table now covers all 6 GLP UI languages; the existing `hass.language` lookup already falls back generically to English for any unsupported language, no detection-logic changes needed. `glp-order-card.js`. Closes #27
