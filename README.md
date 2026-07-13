@@ -60,6 +60,7 @@ type: custom:glp-order-card
 glp_url: http://homeassistant.local:8099   # optional — direct port URL (auto-detected via ingress)
 switch_entity: switch.espresso_plug        # optional — auto-detected from GLP integration sensor
 title: Bestellen                           # optional — card header title
+machine: Kitchen GaggiMate                 # optional — multi-machine setups only, see below
 ```
 
 ### Options
@@ -70,6 +71,7 @@ title: Bestellen                           # optional — card header title
 | `switch_entity` | HA switch entity for the machine. Auto-detected from the `machine_status` sensor attribute if the GLP integration is installed. | *(auto)* |
 | `title` | Card header title | `Bestellen` / `Order` (auto-detected language) |
 | `new_badge_days` | How many days newly added menu items show the NEW badge | `7` |
+| `machine` | Name/slug of a specific machine, for setups with more than one GLP machine (the app's multi-machine mode). Used to auto-detect `switch_entity` from the right machine's `*_machine_status` entity, and tags every placed order with this machine name (shown in the order's status card). The app instance/ingress URL is still the same for every machine — this only targets *which* machine's queue/switch the card cares about. | *(auto — first machine found)* |
 
 ## How it works
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.16.0] – 2026-07-13
+### Added
+- **`machine` config option + machine target for orders** (companion to app v2.0.0's multi-machine mode, GLP #317, and `POST /api/orders`'s new optional `machine` field). When set, `_getSwitchEntity()` resolves the switch entity from the `*_machine_status` entity whose name references the configured machine, and every placed order includes `machine` in its payload. The active order's status card shows the machine name (🔀) when the order carries one — hidden entirely for orders without it (e.g. single-machine setups, or orders placed before this feature), so existing setups are visually unchanged. Ingress URL resolution stays bound to the one app instance regardless (documented as an existing limitation, not new). `glp-order-card.js`, `test/machine-config.test.js` (new, 5 tests). Closes #29
+
 ## [1.15.0] – 2026-07-12
 ### Added
 - **Blend bean origins.** The backend (gaggiuino-local-profiler v1.120.0) now exposes a bean's full multi-origin data as `origins[]` (`{code, percent?}`) on `/api/orders/active-beans`, in addition to the legacy single-string `origin`. `_originHtml`/`_beanInfoHtml` now render every origin (flag + localized country name + optional percent, joined with " + "), mirroring the `originDisplay()` pattern already used in the app's own frontend. Falls back to the previous single-origin rendering when the backend doesn't send `origins[]` yet (older add-on versions), so this is non-breaking in both directions. `glp-order-card.js`, `test/origin-html.test.js` (new). Closes #28

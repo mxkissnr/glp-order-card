@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.15.0';
+const GLP_ORDER_CARD_VERSION = '1.16.0';
 
 // Menu items younger than this show the NEW badge (config: new_badge_days)
 const NEW_BADGE_DAYS_DEFAULT = 7;
@@ -383,7 +383,7 @@ class GlpOrderCard extends HTMLElement {
   }
 
   setConfig(config) {
-    this._config = { title: null, switch_entity: null, glp_token: null, ...config };
+    this._config = { title: null, switch_entity: null, glp_token: null, machine: null, ...config };
     // Allow explicit token override in YAML for direct-URL mode
     if (config.glp_token) this._token = String(config.glp_token);
   }
@@ -395,10 +395,31 @@ class GlpOrderCard extends HTMLElement {
     return window.location.origin + '/api/hassio_ingress/gaggiuino_local_profiler';
   }
 
+  // machine (#29): optional config option for setups with more than one GLP
+  // machine (the app's multi-machine mode, GLP #317). Ingress stays bound to
+  // the one app instance regardless (see README — a documented limitation,
+  // not a bug: there's still only one add-on), but `_getSwitchEntity()`
+  // resolution and the order payload's `machine` field use it to target the
+  // right machine's switch/queue display. Falls back to the previous "first
+  // *_machine_status entity" behavior when unset, so existing single-machine
+  // cards are unaffected.
+  _findMachineStatusEntity() {
+    if (!this._hass) return null;
+    const candidates = Object.keys(this._hass.states).filter(id => id.endsWith('_machine_status'));
+    if (this._config?.machine) {
+      const needle = String(this._config.machine).toLowerCase();
+      const needleSlug = needle.replace(/\s+/g, '_');
+      const matched = candidates.find(id =>
+        this._hass.states[id]?.attributes?.friendly_name?.toLowerCase().includes(needle) ||
+        id.toLowerCase().includes(needleSlug));
+      if (matched) return matched;
+    }
+    return candidates[0] || null;
+  }
+
   _getSwitchEntity() {
     if (this._config?.switch_entity) return this._config.switch_entity;
-    if (!this._hass) return null;
-    const found = Object.keys(this._hass.states).find(id => id.endsWith('_machine_status'));
+    const found = this._findMachineStatusEntity();
     return found ? (this._hass.states[found]?.attributes?.switch_entity || null) : null;
   }
 
@@ -716,6 +737,12 @@ class GlpOrderCard extends HTMLElement {
   _renderStatus(order, lang) {
     let content = '';
     const itemLabel = order.variant ? `${order.item} · ${order.variant}` : order.item;
+    // Multi-machine (#29): only shown when the order actually carries a
+    // machine name — orders placed before this feature, or on a
+    // single-machine setup that never sets `machine` in config, render
+    // exactly as before.
+    const machineLine = order.machine
+      ? `<div class="status-line status-machine">🔀 ${_esc(order.machine)}</div>` : '';
 
     if (order.status === 'pending') {
       const qp = this._queueEta?.positions?.[order.id];
@@ -724,6 +751,7 @@ class GlpOrderCard extends HTMLElement {
         : '';
       content = `<div class="status-card pending">
         <div class="status-item">${_esc(_s('pending', lang, itemLabel))}</div>
+        ${machineLine}
         ${queueLine}
       </div>`;
     } else if (order.status === 'accepted') {
@@ -731,6 +759,7 @@ class GlpOrderCard extends HTMLElement {
       const minsLeft  = Math.max(0, Math.ceil((etaDone - Date.now()) / 60000));
       content = `<div class="status-card accepted">
         <div class="status-item">${_esc(_s('accepted', lang, itemLabel, minsLeft))}</div>
+        ${machineLine}
         <div class="status-eta">${minsLeft === 0 ? _s('almost_ready', this._lang) : `~${minsLeft} min`}</div>
       </div>`;
     } else if (order.status === 'done') {
@@ -930,6 +959,7 @@ class GlpOrderCard extends HTMLElement {
           note,
           customer: haUser.name,
           haUserId: haUser.id,
+          machine:  this._config?.machine || undefined,
         }),
       }).then(r => r.json());
 
