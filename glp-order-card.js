@@ -352,6 +352,8 @@ const STRINGS = {
   },
 };
 
+// Interpolates ...args raw into the translation string — NOT escaped here.
+// Every call site must wrap the result in _esc() before it reaches innerHTML.
 function _s(key, lang, ...args) {
   const tr = STRINGS[lang] || STRINGS.en;
   const val = tr[key] ?? STRINGS.en[key] ?? key;
