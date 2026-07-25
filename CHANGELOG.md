@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+### Added
+- **Speciality/normal bean grouping.** Bean-backed menu items (`useBeans`) now split their variant picker into two sections — "Speciality" and "Normal" — using the `category` field on `/api/orders/active-beans` (added in gaggiuino-local-profiler#505; untagged beans or beans from older app versions default to "Normal"). Mirrors the existing trending/regular menu-item split. Non-bean items (`item.variants`) are unaffected — still a single flat chip grid. `_getVariants()` stays as the flat/length helper for the initial render, incremental DOM update and submit-button paths; a new `_getVariantsGrouped()` + shared `_variantInnerHtml()`/`_variantChipHtml()` helpers handle the grouped rendering so `_renderOrderForm()` and `_updateVariantPicker()` no longer duplicate the chip markup. `glp-order-card.js`, `test/variant-grouping.test.js` (new, 6 tests). Closes #36
+
 ## [1.16.0] – 2026-07-13
 ### Added
 - **`machine` config option + machine target for orders** (companion to app v2.0.0's multi-machine mode, GLP #317, and `POST /api/orders`'s new optional `machine` field). When set, `_getSwitchEntity()` resolves the switch entity from the `*_machine_status` entity whose name references the configured machine, and every placed order includes `machine` in its payload. The active order's status card shows the machine name (🔀) when the order carries one — hidden entirely for orders without it (e.g. single-machine setups, or orders placed before this feature), so existing setups are visually unchanged. Ingress URL resolution stays bound to the one app instance regardless (documented as an existing limitation, not new). `glp-order-card.js`, `test/machine-config.test.js` (new, 5 tests). Closes #29

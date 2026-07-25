@@ -214,6 +214,8 @@ const STRINGS = {
     order_btn_select: 'Getränk auswählen',
     variant_select: 'Variante wählen',
     variant_label: 'Variante',
+    variant_speciality: 'Spezialität',
+    variant_normal: 'Normal',
     bean_origin: 'Herkunft',
     bean_variety: 'Varietät',
     bean_process: 'Aufbereitung',
@@ -238,6 +240,8 @@ const STRINGS = {
     order_btn_select: 'Select a drink',
     variant_select: 'Select variant',
     variant_label: 'Variant',
+    variant_speciality: 'Speciality',
+    variant_normal: 'Normal',
     bean_origin: 'Origin',
     bean_variety: 'Variety',
     bean_process: 'Process',
@@ -262,6 +266,8 @@ const STRINGS = {
     order_btn_select: 'Seleziona una bevanda',
     variant_select: 'Seleziona variante',
     variant_label: 'Variante',
+    variant_speciality: 'Specialità',
+    variant_normal: 'Normale',
     bean_origin: 'Origine',
     bean_variety: 'Varietà',
     bean_process: 'Lavorazione',
@@ -286,6 +292,8 @@ const STRINGS = {
     order_btn_select: 'Choisir une boisson',
     variant_select: 'Choisir la variante',
     variant_label: 'Variante',
+    variant_speciality: 'Spécialité',
+    variant_normal: 'Normal',
     bean_origin: 'Origine',
     bean_variety: 'Variété',
     bean_process: 'Traitement',
@@ -310,6 +318,8 @@ const STRINGS = {
     order_btn_select: 'Selecciona una bebida',
     variant_select: 'Selecciona variante',
     variant_label: 'Variante',
+    variant_speciality: 'Especialidad',
+    variant_normal: 'Normal',
     bean_origin: 'Origen',
     bean_variety: 'Variedad',
     bean_process: 'Proceso',
@@ -334,6 +344,8 @@ const STRINGS = {
     order_btn_select: 'Kies een drankje',
     variant_select: 'Variant kiezen',
     variant_label: 'Variant',
+    variant_speciality: 'Specialiteit',
+    variant_normal: 'Normaal',
     bean_origin: 'Herkomst',
     bean_variety: 'Variëteit',
     bean_process: 'Verwerking',
@@ -657,10 +669,12 @@ class GlpOrderCard extends HTMLElement {
     const selectedItem = visibleMenu.find(m => m.name === this._selected);
     const variants = this._getVariants(selectedItem);
     const needsVariant = variants.length > 0 && !this._selectedVariant;
+    const groupedVariants = this._getVariantsGrouped(selectedItem);
+    const wrapperClass = groupedVariants.flat ? ' class="variant-grid"' : '';
     const variantSection = (this._selected && variants.length > 0) ? `
       <p class="variant-label">${_s('variant_label', lang)}</p>
-      <div class="variant-grid" id="oc-variants">
-        ${variants.map(v => `<div class="variant-chip${this._selectedVariant === v ? ' selected' : ''}" data-variant="${_esc(v)}">${_esc(v)}</div>`).join('')}
+      <div id="oc-variants"${wrapperClass}>
+        ${this._variantInnerHtml(groupedVariants, lang)}
       </div>` : '';
     const beanInfoSection = this._beanInfoHtml(this._getSelectedBean(), lang);
     const itemLabel = (this._selected && this._selectedVariant)
@@ -844,6 +858,42 @@ class GlpOrderCard extends HTMLElement {
     return item.variants || [];
   }
 
+  // Second, orthogonal grouping axis on top of _getVariants() (#36): non-bean
+  // items (plain item.variants string arrays) have no category concept, so
+  // they stay flat/ungrouped exactly as before. Bean-backed items split into
+  // speciality/normal sections using the app's `category` field (added in
+  // gaggiuino-local-profiler#505) — untagged/missing beans default to 'normal'.
+  _getVariantsGrouped(item) {
+    if (!item?.useBeans) return { flat: this._getVariants(item) };
+    const label = b => b.decaf ? `${b.name} · Decaf` : b.name;
+    const beans = this._activeBeans || [];
+    return {
+      speciality: beans.filter(b => b.category === 'speciality').map(label),
+      normal:     beans.filter(b => b.category !== 'speciality').map(label),
+    };
+  }
+
+  _variantChipHtml(v) {
+    return `<div class="variant-chip${this._selectedVariant === v ? ' selected' : ''}" data-variant="${_esc(v)}">${_esc(v)}</div>`;
+  }
+
+  // Shared by _renderOrderForm() and _updateVariantPicker() so the two never
+  // drift. Mirrors the trending/regular section pattern (~line 650): headings
+  // shown only when both groups are non-empty — a single-group list (e.g. all
+  // beans untagged) renders as one plain grid, no noisy "Normal" label.
+  _variantInnerHtml(grouped, lang) {
+    if (grouped.flat) return grouped.flat.map(v => this._variantChipHtml(v)).join('');
+    const { speciality, normal } = grouped;
+    const showHeadings = speciality.length > 0 && normal.length > 0;
+    const specialitySection = speciality.length ? `
+      ${showHeadings ? `<p class="menu-section-title">${_s('variant_speciality', lang)}</p>` : ''}
+      <div class="variant-grid">${speciality.map(v => this._variantChipHtml(v)).join('')}</div>` : '';
+    const normalSection = normal.length ? `
+      ${showHeadings ? `<p class="menu-section-title" style="margin-top:10px">${_s('variant_normal', lang)}</p>` : ''}
+      <div class="variant-grid">${normal.map(v => this._variantChipHtml(v)).join('')}</div>` : '';
+    return specialitySection + normalSection;
+  }
+
   _getSelectedBean() {
     const selectedItem = this._menu?.find(m => m.name === this._selected);
     if (!selectedItem?.useBeans || !this._selectedVariant) return null;
@@ -895,16 +945,15 @@ class GlpOrderCard extends HTMLElement {
       label.className = 'variant-label';
       label.textContent = _s('variant_label', this._lang);
       const grid = document.createElement('div');
-      grid.className = 'variant-grid';
       grid.id = 'oc-variants';
       const noteInput = this.shadowRoot.getElementById('oc-note');
       container.insertBefore(label, noteInput);
       container.insertBefore(grid, noteInput);
       vRow = grid;
     }
-    vRow.innerHTML = variants.map(v =>
-      `<div class="variant-chip${this._selectedVariant === v ? ' selected' : ''}" data-variant="${_esc(v)}">${_esc(v)}</div>`
-    ).join('');
+    const grouped = this._getVariantsGrouped(selectedItem);
+    vRow.className = grouped.flat ? 'variant-grid' : '';
+    vRow.innerHTML = this._variantInnerHtml(grouped, this._lang);
     this._bindVariantChips();
     this._updateBeanInfo();
   }
