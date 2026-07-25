@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.17.0] – 2026-07-25
 ### Added
 - **Speciality/normal bean grouping.** Bean-backed menu items (`useBeans`) now split their variant picker into two sections — "Speciality" and "Normal" — using the `category` field on `/api/orders/active-beans` (added in gaggiuino-local-profiler#505; untagged beans or beans from older app versions default to "Normal"). Mirrors the existing trending/regular menu-item split. Non-bean items (`item.variants`) are unaffected — still a single flat chip grid. `_getVariants()` stays as the flat/length helper for the initial render, incremental DOM update and submit-button paths; a new `_getVariantsGrouped()` + shared `_variantInnerHtml()`/`_variantChipHtml()` helpers handle the grouped rendering so `_renderOrderForm()` and `_updateVariantPicker()` no longer duplicate the chip markup. `glp-order-card.js`, `test/variant-grouping.test.js` (new, 6 tests). Closes #36
 
