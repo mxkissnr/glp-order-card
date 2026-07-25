@@ -92,7 +92,7 @@ const SETTINGS   = { enabled: true };
 const QUEUE_ETA  = { positions: {} };
 
 const ACTIVE_BEANS = [
-  { name: 'Yirgacheffe Chelelektu', origin: 'ET', variety: 'Heirloom', process: 'Washed', notes: 'Blumig, Zitrone, Bergamotte', decaf: false },
+  { name: 'Yirgacheffe Chelelektu', origin: 'ET', variety: 'Heirloom', process: 'Washed', notes: 'Blumig, Zitrone, Bergamotte', decaf: false, category: 'speciality' },
   { name: 'Bombe', origin: 'BR', variety: 'Bourbon, Catuai', process: 'Natural', notes: 'Schokolade, Nougat, Karamell', decaf: false },
 ];
 
