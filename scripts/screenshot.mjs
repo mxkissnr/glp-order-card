@@ -177,6 +177,12 @@ async function main() {
   await mockApi(page);
   await page.goto(`${baseUrl}/__harness.html`);
 
+  // The page.evaluate()/waitForFunction() callbacks below run inside the
+  // browser tab via Playwright, not in this Node process — `document` is a
+  // real global there, even though ESLint's static analysis (correctly, for
+  // a .mjs Node script) doesn't know that.
+  /* eslint-disable no-undef */
+
   // Wait for the menu grid to actually render inside the shadow DOM.
   await page.waitForFunction(() => {
     const el = document.querySelector('glp-order-card');
@@ -215,6 +221,8 @@ async function main() {
     const el = document.querySelector('glp-order-card');
     return !!el?.shadowRoot?.querySelector('#oc-bean-info');
   }, { timeout: 5000 });
+
+  /* eslint-enable no-undef */
 
   await page.waitForTimeout(300); // let hover/transition state settle
 
