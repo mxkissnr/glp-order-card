@@ -30,6 +30,13 @@
 
 <p align="center">
   <img src="docs/screenshots/card.png" alt="GLP Order Card showing the drink menu, a selected bean-library variant with taste notes/origin/process, and the order button" width="360"/>
+  <img src="docs/screenshots/card-light.png" alt="The same GLP Order Card rendered against a light Home Assistant theme" width="360"/>
+</p>
+
+The card follows your Home Assistant theme (light or dark) and keeps text readable on top of any accent color, including a dark HA theme primary color:
+
+<p align="center">
+  <img src="docs/screenshots/card-dark-accent.png" alt="GLP Order Card with a dark HA primary/accent color, showing automatic text contrast on the order button" width="360"/>
 </p>
 
 Regenerated on demand via `node scripts/screenshot.mjs` (demo data, no real backend required).
