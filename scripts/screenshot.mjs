@@ -47,27 +47,32 @@ const LIGHT_SHORTHAND = process.argv.includes('--light');
 const HA_THEME  = flag('ha-theme', 'GLP_HA_THEME', LIGHT_SHORTHAND ? 'light' : 'dark');
 const OS_SCHEME = flag('os-scheme', 'GLP_OS_SCHEME', LIGHT_SHORTHAND ? 'light' : HA_THEME);
 const outFile   = flag('out', '', path.join(outDir, HA_THEME === 'light' ? 'card-light.png' : 'card.png'));
+// Independent override for just --primary-color (drives --glp-accent) — lets
+// a screenshot prove the --glp-accent-text fix against a dark theme primary
+// (e.g. a common "Indigo 900"-style theme) without needing a whole separate
+// dark/light theme preset for it.
+const PRIMARY_COLOR_OVERRIDE = flag('primary-color', 'GLP_PRIMARY_COLOR', '');
 
 const MIME = { '.js': 'text/javascript', '.html': 'text/html', '.svg': 'image/svg+xml', '.png': 'image/png' };
 
 // HA theme CSS variables the card reads via the GLP-TOKENS fallback chain.
 // Values match the "GLP Light"/"GLP Dark" themes in glp-ha-theme.yaml (from
 // the gaggiuino-local-profiler repo).
-const THEME_VARS = HA_THEME === 'light' ? `
+const THEME_VARS = (HA_THEME === 'light' ? `
     --card-background-color: #ffffff;
     --primary-text-color: #18181b;
     --secondary-text-color: #52525b;
     --divider-color: #f4f4f5;
-    --primary-color: #d97706;
+    --primary-color: ${PRIMARY_COLOR_OVERRIDE || '#d97706'};
     --secondary-background-color: #ffffff;
 ` : `
     --card-background-color: #18181b;
     --primary-text-color: #e4e4e7;
     --secondary-text-color: #a1a1aa;
     --divider-color: #27272a;
-    --primary-color: #f59e0b;
+    --primary-color: ${PRIMARY_COLOR_OVERRIDE || '#f59e0b'};
     --secondary-background-color: #18181b;
-`;
+`);
 
 const HARNESS_HTML = `<!doctype html>
 <html>

@@ -1,6 +1,7 @@
 // Proves _applySemanticColorContrast() actually RUNS and picks the correct
-// --glp-ok/--glp-warn/--glp-err variant for a given resolved --glp-bg — not
-// just that the method exists. Loads the real glp-order-card.js into a
+// --glp-ok/--glp-warn/--glp-err (by --glp-bg luminance) and --glp-accent-text
+// (by --glp-accent luminance, independently) — not just that the method
+// exists. Loads the real glp-order-card.js into a
 // sandboxed vm context with a minimal fake DOM (style objects backed by a
 // plain Map, no real CSS engine) sufficient to drive the method end-to-end:
 // getComputedStyle(this).getPropertyValue('--glp-bg') reads back a
@@ -91,8 +92,25 @@ test('_applySemanticColorContrast() picks the dark-safe constants for a near-bla
   assert.equal(card.style.getPropertyValue('--glp-err'), '#ef4444');
 });
 
-test('_applySemanticColorContrast() is a no-op (does not throw) when --glp-bg is unset', () => {
+test('_applySemanticColorContrast() picks dark --glp-accent-text for a light accent (amber)', () => {
+  const card = new GlpOrderCard();
+  card.style.setProperty('--glp-bg', 'rgb(24, 24, 27)');
+  card.style.setProperty('--glp-accent', 'rgb(245, 158, 11)'); // #f59e0b, GLP Dark's default primary
+  card._applySemanticColorContrast();
+  assert.equal(card.style.getPropertyValue('--glp-accent-text'), '#000');
+});
+
+test('_applySemanticColorContrast() picks light --glp-accent-text for a dark accent (indigo) — the .order-btn bug', () => {
+  const card = new GlpOrderCard();
+  card.style.setProperty('--glp-bg', 'rgb(255, 255, 255)');
+  card.style.setProperty('--glp-accent', 'rgb(26, 35, 126)'); // #1a237e, Material Indigo 900 — a common dark theme primary
+  card._applySemanticColorContrast();
+  assert.equal(card.style.getPropertyValue('--glp-accent-text'), '#fff');
+});
+
+test('_applySemanticColorContrast() is a no-op (does not throw) when --glp-bg/--glp-accent are unset', () => {
   const card = new GlpOrderCard();
   assert.doesNotThrow(() => card._applySemanticColorContrast());
   assert.equal(card.style.getPropertyValue('--glp-ok'), '');
+  assert.equal(card.style.getPropertyValue('--glp-accent-text'), '');
 });
