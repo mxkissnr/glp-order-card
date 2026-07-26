@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.18.0] – 2026-07-26
 ### Changed
 - **Flat HA-theme redesign — hybrid tokens, decorative glow removed.** Companion to glp-lovelace-card's identical redesign; purely visual/theming, no behavior change except the chart fix called out below. Closes #39
   - Added the same `GLP-TOKENS v1` block as glp-card.js (byte-identical, shared cross-repo contract — `test/token-sync.test.js`, new, skips cleanly when the neighbor repo/block isn't present locally): `--glp-radius`, `--glp-radius-sm`, `--glp-bg`, `--glp-surface`, `--glp-border`, `--glp-text`, `--glp-sub`, `--glp-accent`, `--glp-ok`, `--glp-warn`, `--glp-err`, and the 4 `--glp-series-*` chart tokens. Reads Home Assistant's own theme CSS variables first, falls back to the old standalone palette values only when a theme doesn't set them. No new YAML config option.
