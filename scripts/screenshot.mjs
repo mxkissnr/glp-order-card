@@ -8,6 +8,22 @@
 // the card into a populated "variant selected + bean info shown" state,
 // and screenshots just the <glp-order-card> element.
 //
+// Two independent axes (deliberately decoupled — the card's contrast fix for
+// --glp-ok/--glp-warn/--glp-err keys off the ACTUAL resolved --glp-bg via
+// getComputedStyle, not off prefers-color-scheme, precisely because HA theme
+// choice and OS/browser color-scheme preference can disagree):
+//   --ha-theme=light|dark   (or GLP_HA_THEME env) — which HA theme CSS
+//                           variables (glp-ha-theme.yaml values) the mock
+//                           page exposes to the card. Default: dark.
+//   --os-scheme=light|dark (or GLP_OS_SCHEME env) — Playwright's emulated
+//                           prefers-color-scheme. Default: mirrors --ha-theme
+//                           (the common case). Set it independently to
+//                           reproduce a mismatch, e.g. dark OS + light HA
+//                           theme.
+// `--light` is shorthand for `--ha-theme=light --os-scheme=light`.
+// `--out=<path>` overrides the output file (default docs/screenshots/card.png,
+// or card-light.png when --ha-theme=light).
+//
 // Run: node scripts/screenshot.mjs
 // Requires: npm install --save-dev playwright && npx playwright install chromium
 
@@ -17,20 +33,51 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
+function flag(name, envVar, fallback) {
+  const eq = process.argv.find(a => a.startsWith(`--${name}=`));
+  if (eq) return eq.split('=')[1];
+  if (envVar && process.env[envVar]) return process.env[envVar];
+  return fallback;
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot  = path.join(__dirname, '..');
 const outDir    = path.join(repoRoot, 'docs', 'screenshots');
-const outFile   = path.join(outDir, 'card.png');
+const LIGHT_SHORTHAND = process.argv.includes('--light');
+const HA_THEME  = flag('ha-theme', 'GLP_HA_THEME', LIGHT_SHORTHAND ? 'light' : 'dark');
+const OS_SCHEME = flag('os-scheme', 'GLP_OS_SCHEME', LIGHT_SHORTHAND ? 'light' : HA_THEME);
+const outFile   = flag('out', '', path.join(outDir, HA_THEME === 'light' ? 'card-light.png' : 'card.png'));
 
 const MIME = { '.js': 'text/javascript', '.html': 'text/html', '.svg': 'image/svg+xml', '.png': 'image/png' };
+
+// HA theme CSS variables the card reads via the GLP-TOKENS fallback chain.
+// Values match the "GLP Light"/"GLP Dark" themes in glp-ha-theme.yaml (from
+// the gaggiuino-local-profiler repo).
+const THEME_VARS = HA_THEME === 'light' ? `
+    --card-background-color: #ffffff;
+    --primary-text-color: #18181b;
+    --secondary-text-color: #52525b;
+    --divider-color: #f4f4f5;
+    --primary-color: #d97706;
+    --secondary-background-color: #ffffff;
+` : `
+    --card-background-color: #18181b;
+    --primary-text-color: #e4e4e7;
+    --secondary-text-color: #a1a1aa;
+    --divider-color: #27272a;
+    --primary-color: #f59e0b;
+    --secondary-background-color: #18181b;
+`;
 
 const HARNESS_HTML = `<!doctype html>
 <html>
 <head>
 <meta charset="utf-8">
 <style>
-  html, body { margin: 0; background: #000; }
-  body { display: flex; padding: 40px; }
+  html, body { margin: 0; background: ${HA_THEME === 'light' ? '#fafafa' : '#000'}; }
+  body {
+    display: flex; padding: 40px;
+${THEME_VARS}  }
   glp-order-card { display: block; width: 360px; }
 </style>
 </head>
@@ -105,14 +152,23 @@ async function mockApi(page) {
 }
 
 async function main() {
-  fs.mkdirSync(outDir, { recursive: true });
+  fs.mkdirSync(path.dirname(outFile), { recursive: true });
 
   const server = await startServer();
   const { port } = server.address();
   const baseUrl = `http://127.0.0.1:${port}`;
 
   const browser = await chromium.launch();
-  const page = await browser.newPage({ deviceScaleFactor: 2, viewport: { width: 500, height: 700 } });
+  // colorScheme is intentionally independent from HA_THEME/THEME_VARS — the
+  // card's --glp-ok/--glp-warn/--glp-err fix keys off the card's own
+  // resolved --glp-bg (getComputedStyle), not prefers-color-scheme, so this
+  // axis exists here only to prove that OS/HA-theme mismatches (e.g. dark OS
+  // + light HA theme) render correctly too.
+  const page = await browser.newPage({
+    deviceScaleFactor: 2,
+    viewport: { width: 500, height: 700 },
+    colorScheme: OS_SCHEME === 'light' ? 'light' : 'dark',
+  });
   await mockApi(page);
   await page.goto(`${baseUrl}/__harness.html`);
 
@@ -162,7 +218,7 @@ async function main() {
 
   await browser.close();
   server.close();
-  console.log(`Screenshot written to ${outFile}`);
+  console.log(`Screenshot written to ${outFile} (ha-theme=${HA_THEME}, os-scheme=${OS_SCHEME})`);
   process.exit(0);
 }
 

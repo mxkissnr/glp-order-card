@@ -34,26 +34,90 @@ function _safeUrl(url) {
 }
 
 const STYLES = `
+  /* GLP-TOKENS v1 — shared contract between glp-card.js and glp-order-card.js, keep byte-identical */
   :host {
-    --oc-bg:       #111113;
-    --oc-surface:  rgba(255,255,255,.055);
-    --oc-surface2: rgba(255,255,255,.03);
-    --oc-border:   rgba(255,255,255,.08);
-    --oc-text:     #f2f2f7;
-    --oc-sub:      #8e8e93;
-    --oc-accent:   #ff3b30;
-    --oc-amber:    #ff9f0a;
-    --oc-green:    #30d158;
+    --glp-radius:    var(--ha-card-border-radius, 12px);
+    --glp-radius-sm: 8px;
+    --glp-bg:      var(--ha-card-background, var(--card-background-color, #18181b));
+    --glp-surface: var(--secondary-background-color, #27272a);
+    --glp-border:  var(--divider-color, #3f3f46);
+    --glp-text:    var(--primary-text-color, #e4e4e7);
+    --glp-sub:     var(--secondary-text-color, #a1a1aa);
+    --glp-accent:  var(--primary-color, #f59e0b);
+    /* --glp-ok/--glp-warn/--glp-err deliberately do NOT chain through HA's
+       own --success-color/--warning-color/--error-color. Checked both HA
+       frontend's own out-of-the-box defaults (same for light AND dark mode —
+       home-assistant/frontend src/resources/theme/color/color.globals.ts)
+       and glp-ha-theme.yaml's "GLP Light" theme; neither reliably clears the
+       4.5:1 WCAG AA floor this card's small/bold badge, banner and
+       star-rating text needs against a light background. Measured (relative
+       luminance contrast) vs white:
+         HA frontend default success-color #43a047: 3.30:1 (fails)
+         HA frontend default warning-color #ffa600: 1.96:1 (fails badly)
+         HA frontend default error-color   #db4437: 4.29:1 (fails, barely)
+         glp-ha-theme.yaml "GLP Light" success-color #16a34a: 3.30:1 (fails)
+         glp-ha-theme.yaml "GLP Light" warning-color #d97706: 3.19:1 (fails)
+         glp-ha-theme.yaml "GLP Light" error-color   #dc2626: 4.83:1 (passes,
+           but the point stands — the fallback chain isn't the guarantee)
+       Trusting an arbitrary theme's value would still ship a contrast
+       failure under HA's own vanilla defaults, so all three are fixed,
+       self-controlled constants, applied by JS based on the LUMINANCE OF
+       THE CARD'S OWN RESOLVED --glp-bg (_applySemanticColorContrast(),
+       called from _render() right after the shadow DOM is (re)built) —
+       not by prefers-color-scheme/OS preference and not by a data-theme
+       attribute. Neither exists reliably for a Lovelace custom element, and
+       OS preference can flatly mismatch the active HA theme (dark OS +
+       light HA theme, or vice versa) — exactly the case this needs to get
+       right, since that's the actual bug being fixed here. The dark values
+       below are the pre-JS declared defaults; _applySemanticColorContrast()
+       overwrites them as an inline style on the host, which always wins
+       over these stylesheet declarations regardless of media query state.
+       Measured:
+         --glp-ok   dark  #22c55e vs dark bg (#18181b): 7.78:1
+         --glp-warn dark  #eab308 vs dark bg (#18181b): 9.24:1
+         --glp-err  dark  #ef4444 vs dark bg (#18181b): 4.71:1
+         --glp-ok   light #15803d vs white:             5.02:1
+         --glp-warn light #a16207 vs white:             4.92:1
+         --glp-err  light #dc2626 vs white:             4.83:1
+       --glp-sub (var(--secondary-text-color)) needed no such handling — it's
+       already HA's own theme var and measured fine both ways: dark fallback
+       #a1a1aa vs dark bg 6.91:1; GLP Light's secondary-text-color #52525b
+       vs white 7.73:1. */
+    --glp-ok:      #22c55e;
+    --glp-warn:    #eab308;
+    --glp-err:     #ef4444;
+    --glp-series-pres:   #0072b2;
+    --glp-series-flow:   #c77000;
+    --glp-series-temp:   #c0392b;
+    --glp-series-weight: #009e73;
+  }
+  /* /GLP-TOKENS v1 */
+
+  /* legacy internal aliases — rest of this file still reads these names;
+     hybrid theming happens one level up, in the GLP-TOKENS block above.
+     --oc-accent maps to --glp-err (this card's "amber" is its own CTA/brand
+     color below, mapped separately to --glp-accent — see .order-btn etc). */
+  :host {
+    --oc-bg:       var(--glp-bg);
+    --oc-surface:  var(--glp-surface);
+    --oc-surface2: color-mix(in srgb, var(--glp-text) 4%, transparent);
+    --oc-border:   var(--glp-border);
+    --oc-text:     var(--glp-text);
+    --oc-sub:      var(--glp-sub);
+    --oc-accent:   var(--glp-err);
+    --oc-amber:    var(--glp-warn);
+    --oc-green:    var(--glp-ok);
   }
   ha-card {
-    background: var(--oc-bg);
-    border: 1px solid var(--oc-border);
-    border-radius: 20px;
-    overflow: hidden;
+    background: transparent;
+    border: none;
+    box-shadow: none;
   }
   .card {
     background: var(--oc-bg);
-    border-radius: 20px;
+    border: 1px solid var(--oc-border);
+    border-radius: var(--glp-radius);
+    box-shadow: var(--ha-card-box-shadow, none);
     padding: 20px;
     font-family: var(--paper-font-body1_-_font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif);
     color: var(--oc-text);
@@ -64,9 +128,9 @@ const STYLES = `
     letter-spacing: .08em; text-transform: uppercase; margin-bottom: 18px;
   }
   .machine-off {
-    background: linear-gradient(180deg, rgba(255,59,48,.10), rgba(255,59,48,.04));
-    border: 1px solid rgba(255,59,48,.22);
-    border-radius: 14px; color: #ff6b61; font-size: .85rem; font-weight: 600;
+    background: color-mix(in srgb, var(--oc-accent) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--oc-accent) 22%, transparent);
+    border-radius: var(--glp-radius); color: var(--oc-accent); font-size: .85rem; font-weight: 600;
     text-align: center; padding: 16px;
   }
 
@@ -78,26 +142,19 @@ const STYLES = `
     margin-bottom: 16px;
   }
   .menu-item {
-    position: relative;
     background: var(--oc-surface);
     border: 1px solid var(--oc-border);
-    border-radius: 16px;
+    border-radius: var(--glp-radius);
     padding: 14px 8px;
     text-align: center;
     cursor: pointer;
-    transition: transform .18s cubic-bezier(.25,.46,.45,.94), border-color .18s, background .18s, box-shadow .18s;
+    transition: border-color .18s, background .18s;
     user-select: none;
-    overflow: hidden;
   }
-  .menu-item::before {
-    content: ''; position: absolute; inset: 0 0 auto 0; height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,.14), transparent);
-  }
-  .menu-item:hover { transform: translateY(-2px); border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.08); }
+  .menu-item:hover { border-color: color-mix(in srgb, var(--oc-text) 18%, transparent); background: color-mix(in srgb, var(--oc-text) 8%, transparent); }
   .menu-item.selected {
-    border-color: rgba(255,159,10,.55);
-    background: linear-gradient(180deg, rgba(255,159,10,.16), rgba(255,159,10,.05));
-    box-shadow: 0 0 0 1px rgba(255,159,10,.25), 0 6px 18px -8px rgba(255,159,10,.5);
+    border-color: color-mix(in srgb, var(--glp-accent) 55%, transparent);
+    background: color-mix(in srgb, var(--glp-accent) 12%, transparent);
   }
   .menu-item-emoji { font-size: 1.9rem; margin-bottom: 5px; line-height: 1; }
   .menu-item-name  { font-size: .72rem; font-weight: 500; color: var(--oc-sub); }
@@ -107,47 +164,45 @@ const STYLES = `
   .order-form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 4px; }
   .note-input {
     background: var(--oc-surface2); border: 1px solid var(--oc-border);
-    border-radius: 12px; color: var(--oc-text); font-family: inherit;
+    border-radius: var(--glp-radius); color: var(--oc-text); font-family: inherit;
     font-size: .85rem; padding: 11px 14px; outline: none; width: 100%; box-sizing: border-box;
     transition: border-color .18s, background .18s;
   }
   .note-input::placeholder { color: var(--oc-sub); }
-  .note-input:focus { border-color: rgba(255,159,10,.45); background: rgba(255,255,255,.05); }
+  .note-input:focus { border-color: color-mix(in srgb, var(--glp-accent) 45%, transparent); background: color-mix(in srgb, var(--oc-text) 5%, transparent); }
   .order-btn {
-    width: 100%; padding: 14px; border: none; border-radius: 14px;
+    width: 100%; padding: 14px; border: none; border-radius: var(--glp-radius);
     font-size: .92rem; font-weight: 800; letter-spacing: .01em; cursor: pointer;
     font-family: inherit; color: #1a1205;
-    background: linear-gradient(180deg, #ffb340, #ff9f0a);
-    box-shadow: 0 8px 20px -8px rgba(255,159,10,.6);
-    transition: transform .15s, box-shadow .15s, opacity .15s, background .15s;
+    background: var(--glp-accent);
+    transition: background .15s, opacity .15s;
   }
-  .order-btn:disabled { opacity: .4; cursor: default; background: var(--oc-surface); color: var(--oc-sub); box-shadow: none; }
-  .order-btn:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 10px 26px -8px rgba(255,159,10,.7); }
-  .order-btn:not(:disabled):active { transform: translateY(0); }
+  .order-btn:disabled { opacity: .4; cursor: default; background: var(--oc-surface); color: var(--oc-sub); }
+  .order-btn:not(:disabled):hover { background: color-mix(in srgb, var(--glp-accent) 90%, var(--oc-text) 10%); }
 
   /* Status card */
   .status-card {
-    position: relative; border-radius: 16px; padding: 16px 18px;
-    display: flex; flex-direction: column; gap: 7px; overflow: hidden;
+    border-radius: var(--glp-radius); padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 7px;
     animation: oc-fade .3s ease-out both;
   }
   @keyframes oc-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-  .status-card.pending  { background: linear-gradient(180deg, rgba(255,159,10,.12), rgba(255,159,10,.04)); border: 1px solid rgba(255,159,10,.28); }
-  .status-card.accepted { background: linear-gradient(180deg, rgba(48,209,88,.12), rgba(48,209,88,.04)); border: 1px solid rgba(48,209,88,.28); }
-  .status-card.done     { background: linear-gradient(180deg, rgba(48,209,88,.10), rgba(48,209,88,.03)); border: 1px solid rgba(48,209,88,.2); }
-  .status-card.declined { background: linear-gradient(180deg, rgba(255,59,48,.10), rgba(255,59,48,.03)); border: 1px solid rgba(255,59,48,.22); }
+  .status-card.pending  { background: color-mix(in srgb, var(--glp-accent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--glp-accent) 28%, transparent); }
+  .status-card.accepted { background: color-mix(in srgb, var(--oc-green) 10%, transparent); border: 1px solid color-mix(in srgb, var(--oc-green) 28%, transparent); }
+  .status-card.done     { background: color-mix(in srgb, var(--oc-green) 8%, transparent); border: 1px solid color-mix(in srgb, var(--oc-green) 20%, transparent); }
+  .status-card.declined { background: color-mix(in srgb, var(--oc-accent) 8%, transparent); border: 1px solid color-mix(in srgb, var(--oc-accent) 22%, transparent); }
   .status-item  { font-size: 1.02rem; font-weight: 700; letter-spacing: -.01em; }
   .status-line  { font-size: .82rem; color: var(--oc-sub); }
   .status-eta   { font-size: .9rem; font-weight: 700; color: var(--oc-green); }
   .status-card.accepted .status-eta { animation: oc-pulse 2s ease-in-out infinite; }
   @keyframes oc-pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
-  .status-decline { font-size: .82rem; color: #ff6b61; }
+  .status-decline { font-size: .82rem; color: var(--oc-accent); }
   .status-done-msg { font-size: .95rem; font-weight: 800; color: var(--oc-green); letter-spacing: -.01em; }
   .shot-summary {
     margin-top: 12px;
     background: var(--oc-surface2);
     border: 1px solid var(--oc-border);
-    border-radius: 14px;
+    border-radius: var(--glp-radius);
     padding: 14px 16px;
     display: flex;
     flex-direction: column;
@@ -168,16 +223,16 @@ const STYLES = `
   .shot-chart-legend { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
   .shot-chart-legend-item { display: flex; align-items: center; gap: 5px; font-size: .68rem; color: var(--oc-sub); }
   .shot-chart-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .menu-badge { display: inline-block; font-size: .58rem; font-weight: 800; padding: 1px 5px; border-radius: 5px; vertical-align: middle; margin-left: 4px; line-height: 1.5; letter-spacing: .03em; }
-  .menu-badge-new { background: rgba(48,209,88,.18); color: var(--oc-green); border: 1px solid rgba(48,209,88,.3); }
-  .menu-badge-trend { background: rgba(255,59,48,.15); color: #ff7a70; border: 1px solid rgba(255,59,48,.25); }
+  .menu-badge { display: inline-block; font-size: .58rem; font-weight: 800; padding: 1px 5px; border-radius: var(--glp-radius-sm); vertical-align: middle; margin-left: 4px; line-height: 1.5; letter-spacing: .03em; }
+  .menu-badge-new { background: color-mix(in srgb, var(--oc-green) 18%, transparent); color: var(--oc-green); border: 1px solid color-mix(in srgb, var(--oc-green) 30%, transparent); }
+  .menu-badge-trend { background: color-mix(in srgb, var(--oc-accent) 15%, transparent); color: var(--oc-accent); border: 1px solid color-mix(in srgb, var(--oc-accent) 25%, transparent); }
   .menu-section-title { font-size: .64rem; font-weight: 800; color: var(--oc-sub); letter-spacing: .09em; text-transform: uppercase; margin: 0 0 8px; }
   .new-order-btn {
     margin-top: 12px; width: 100%; background: var(--oc-surface); border: 1px solid var(--oc-border);
-    border-radius: 12px; color: var(--oc-sub); font-family: inherit; font-weight: 600;
+    border-radius: var(--glp-radius); color: var(--oc-sub); font-family: inherit; font-weight: 600;
     font-size: .8rem; padding: 9px 14px; cursor: pointer; transition: all .15s;
   }
-  .new-order-btn:hover { border-color: rgba(255,255,255,.22); color: var(--oc-text); background: rgba(255,255,255,.07); }
+  .new-order-btn:hover { border-color: color-mix(in srgb, var(--oc-text) 22%, transparent); color: var(--oc-text); background: color-mix(in srgb, var(--oc-text) 7%, transparent); }
   .loading { color: var(--oc-sub); font-size: .85rem; text-align: center; padding: 20px 0; }
 
   /* Variant picker */
@@ -188,13 +243,13 @@ const STYLES = `
     border-radius: 20px; padding: 6px 15px; font-size: .8rem; cursor: pointer;
     color: var(--oc-sub); transition: all .15s; user-select: none;
   }
-  .variant-chip:hover { border-color: rgba(255,255,255,.2); color: var(--oc-text); }
-  .variant-chip.selected { border-color: rgba(255,159,10,.55); background: rgba(255,159,10,.14); color: var(--oc-text); font-weight: 700; }
+  .variant-chip:hover { border-color: color-mix(in srgb, var(--oc-text) 20%, transparent); color: var(--oc-text); }
+  .variant-chip.selected { border-color: color-mix(in srgb, var(--glp-accent) 55%, transparent); background: color-mix(in srgb, var(--glp-accent) 14%, transparent); color: var(--oc-text); font-weight: 700; }
 
   /* Bean description info box (shown when a bean variant is selected) */
   .bean-info {
     background: var(--oc-surface); border: 1px solid var(--oc-border);
-    border-radius: 10px; padding: 9px 12px; margin: 2px 0 6px;
+    border-radius: var(--glp-radius-sm); padding: 9px 12px; margin: 2px 0 6px;
     font-size: .74rem; line-height: 1.45; color: var(--oc-sub);
   }
   .bean-info-notes { color: var(--oc-text); font-style: italic; margin-bottom: 3px; }
@@ -578,6 +633,41 @@ class GlpOrderCard extends HTMLElement {
     return s?.state === 'off' || s?.state === 'unavailable';
   }
 
+  // Picks the contrast-safe --glp-ok/--glp-warn/--glp-err variant by the
+  // LUMINANCE OF THE CARD'S OWN RESOLVED --glp-bg, not prefers-color-scheme —
+  // OS/browser color scheme can mismatch the actual active HA theme (dark
+  // system + light HA theme is common), and this card has no data-theme
+  // attribute to key off instead. Ported from glp-card.js verbatim; see the
+  // long comment in the GLP-TOKENS block above for the measured contrast
+  // ratios behind these two constant sets. Sets the winning values as an
+  // inline style on the host, which always outranks the plain :host
+  // declarations in STYLES regardless of any stylesheet/media-query state.
+  // Called from _render() right after the shadow DOM is rebuilt.
+  _applySemanticColorContrast() {
+    let rgb;
+    try {
+      const bg = getComputedStyle(this).getPropertyValue('--glp-bg').trim();
+      if (!bg) return;
+      const probe = document.createElement('span');
+      probe.style.cssText = 'display:none';
+      probe.style.color = bg;
+      this.shadowRoot.appendChild(probe);
+      rgb = getComputedStyle(probe).color;
+      probe.remove();
+    } catch { return; }
+    const m = rgb && rgb.match(/[\d.]+/g);
+    if (!m || m.length < 3) return;
+    const [r, g, b] = m.map(Number);
+    const lin = c => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+    const luminance = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    // 0.179 is the standard WCAG "flip point": the background luminance above
+    // which a darker foreground becomes the higher-contrast choice.
+    const light = luminance > 0.179;
+    this.style.setProperty('--glp-ok',   light ? '#15803d' : '#22c55e');
+    this.style.setProperty('--glp-warn', light ? '#a16207' : '#eab308');
+    this.style.setProperty('--glp-err',  light ? '#dc2626' : '#ef4444');
+  }
+
   _render() {
     if (!this._config) return;
     const lang  = this._lang;
@@ -627,6 +717,7 @@ class GlpOrderCard extends HTMLElement {
         </div>
       </ha-card>`;
 
+    this._applySemanticColorContrast();
     this._bindEvents();
   }
 
@@ -698,11 +789,13 @@ class GlpOrderCard extends HTMLElement {
     const dp = shot?.datapoints;
     if (!dp) return '';
 
+    // Series colors: the GLP-series palette (glp-card.js's buildShotChart(),
+    // kept in sync via GLP-TOKENS' --glp-series-* fallback values).
     const series = [
-      { key: 'pressure',    scale: 10, color: '#3b82f6', label: 'Druck' },
-      { key: 'temperature', scale: 10, color: '#f59e0b', label: 'Temp' },
-      { key: 'weightFlow',  scale: 10, color: '#22c55e', label: 'Flow' },
-      { key: 'shotWeight',  scale: 10, color: '#a78bfa', label: 'Gewicht' },
+      { key: 'pressure',    scale: 10, axis: 'left',  color: 'var(--glp-series-pres, #0072b2)',   label: 'Druck' },
+      { key: 'temperature', scale: 10, axis: 'right', color: 'var(--glp-series-temp, #c0392b)',   label: 'Temp' },
+      { key: 'weightFlow',  scale: 10, axis: 'left',  color: 'var(--glp-series-flow, #c77000)',   label: 'Flow' },
+      { key: 'shotWeight',  scale: 10, axis: 'right', color: 'var(--glp-series-weight, #009e73)', label: 'Gewicht' },
     ].map(s => ({ ...s, vals: Array.isArray(dp[s.key]) ? dp[s.key].map(v => v / s.scale) : [] }))
      .filter(s => s.vals.length >= 4);
 
@@ -711,19 +804,30 @@ class GlpOrderCard extends HTMLElement {
     const W = 300, H = 72, pad = 2;
     const len = Math.max(...series.map(s => s.vals.length));
 
-    const polyline = (vals, color) => {
-      const minV = Math.min(...vals), maxV = Math.max(...vals);
-      const range = maxV - minV || 1;
-      const pts = vals.map((v, i) => {
+    // Shared axis scales, not each series independently normalized to its own
+    // min/max (that made the curves' relative shapes meaningless — a nearly
+    // flat temperature line looked as dramatic as a swinging pressure line).
+    // Mirrors glp-card.js's buildShotChart(): pressure+flow share a fixed
+    // 0–12 bar "left" axis, temperature+weight share a dynamic "right" axis
+    // (floor 110) — same two-axis grouping, just without the drawn axis
+    // labels this compact summary chart doesn't have room for.
+    const PMAX = 12;
+    const tempVals = series.find(s => s.key === 'temperature')?.vals || [];
+    const rMax = Math.max(110, Math.ceil(((tempVals.length ? Math.max(...tempVals) : 0) + 5) / 10) * 10);
+    const maxFor = axis => axis === 'left' ? PMAX : rMax;
+
+    const polyline = (s) => {
+      const max = maxFor(s.axis);
+      const pts = s.vals.map((v, i) => {
         const x = pad + (i / (len - 1)) * (W - pad * 2);
-        const y = H - pad - ((v - minV) / range) * (H - pad * 2);
+        const y = H - pad - (Math.max(0, Math.min(max, v)) / max) * (H - pad * 2);
         return `${x.toFixed(1)},${y.toFixed(1)}`;
       }).join(' ');
-      return `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/>`;
+      return `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/>`;
     };
 
     const svg = `<svg class="shot-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
-      ${series.map(s => polyline(s.vals, s.color)).join('')}
+      ${series.map(s => polyline(s)).join('')}
     </svg>`;
 
     const legend = `<div class="shot-chart-legend">
