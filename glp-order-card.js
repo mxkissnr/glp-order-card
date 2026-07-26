@@ -21,7 +21,7 @@ function _originHtml(origins, lang) {
     const code = raw.trim();
     const flag = String.fromCodePoint(...[...code].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
     let name = code;
-    try { name = new Intl.DisplayNames([lang || 'en'], { type: 'region' }).of(code) || code; } catch {}
+    try { name = new Intl.DisplayNames([lang || 'en'], { type: 'region' }).of(code) || code; } catch { /* unsupported/invalid region code, keep raw code fallback */ }
     const label = `${flag} ${_esc(name)}`;
     return o.percent != null ? `${label} ${o.percent}%` : label;
   }).join(' + ');
@@ -566,7 +566,7 @@ class GlpOrderCard extends HTMLElement {
     try {
       const d = await fetch(`${this._getBase()}/api/token`).then(r => r.ok ? r.json() : {});
       this._token = d.apiToken || null;
-    } catch {}
+    } catch { /* 401 in direct-URL mode is expected; falls back to configured glp_token */ }
     return this._token;
   }
 
@@ -630,7 +630,7 @@ class GlpOrderCard extends HTMLElement {
       try {
         const sr = await this._fetch('api/orders/settings');
         if (sr.ok) this._enabled = (await sr.json())?.enabled !== false;
-      } catch {}
+      } catch { /* transient poll failure, keep last known enabled state */ }
     }
     try {
       const orders = await this._fetch(`api/orders/mine?haUserId=${encodeURIComponent(haUser.id)}`).then(r => r.json());
@@ -739,7 +739,7 @@ class GlpOrderCard extends HTMLElement {
     if (sig === this._lastRenderSig) return;
     this._lastRenderSig = sig;
 
-    let body = '';
+    let body;
 
     if (off) {
       body = `<div class="machine-off">${_s('off', lang)}</div>`;
@@ -889,7 +889,7 @@ class GlpOrderCard extends HTMLElement {
     return svg + legend;
   }
 
-  _renderShotSummary(shot, lang) {
+  _renderShotSummary(shot, _lang) {
     if (!shot) return '';
     const profile  = shot.profile?.name || shot.profileName || '–';
     const dur      = shot.duration ? `${(shot.duration / 10).toFixed(0)} s` : null;
@@ -1173,7 +1173,7 @@ class GlpOrderCard extends HTMLElement {
         this._selected    = null;
         this._selectedVariant = null;
       }
-    } catch {}
+    } catch { /* network/API failure: silently falls back to the order form via _submitting reset below */ }
     this._submitting = false;
     this._render();
   }
