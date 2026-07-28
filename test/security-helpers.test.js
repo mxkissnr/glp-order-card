@@ -56,7 +56,7 @@ test('_esc() handles null/undefined/number input', () => {
 
 test('_safeUrl() accepts http(s) URLs', () => {
   assert.equal(safeUrl('https://example.com/path'), 'https://example.com/path');
-  assert.equal(safeUrl('http://192.168.1.50:8099'), 'http://192.168.1.50:8099');
+  assert.equal(safeUrl('http://192.168.1.50:8099'), 'http://192.168.1.50:8099/');
 });
 
 test('_safeUrl() rejects javascript: URLs', () => {

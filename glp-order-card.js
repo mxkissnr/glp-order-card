@@ -29,7 +29,10 @@ function _originHtml(origins, lang) {
 
 function _safeUrl(url) {
   if (!url) return null;
-  try { const u = new URL(url); return (u.protocol==='http:'||u.protocol==='https:') ? url : null; }
+  // Returns u.href (the normalized/re-serialized URL), not the raw input —
+  // the raw string could still contain quote/angle-bracket characters that
+  // break out of an href="..." attribute even though the protocol is fine.
+  try { const u = new URL(url); return (u.protocol==='http:'||u.protocol==='https:') ? u.href : null; }
   catch { return null; }
 }
 
@@ -487,7 +490,13 @@ class GlpOrderCard extends HTMLElement {
 
   _getBase() {
     const url = this._config?.glp_url;
-    if (url) return _safeUrl(url.replace(/\/$/, ''));
+    if (url) {
+      // _safeUrl() returns the re-serialized u.href, which for a bare origin
+      // (no path) always carries a trailing slash — strip it back off so
+      // callers appending `/${path}` don't end up with a double slash.
+      const safe = _safeUrl(url);
+      return safe ? safe.replace(/\/$/, '') : null;
+    }
     // Auto-detect: card runs inside HA browser, use ingress path (no token needed)
     return window.location.origin + '/api/hassio_ingress/gaggiuino_local_profiler';
   }
@@ -507,11 +516,13 @@ class GlpOrderCard extends HTMLElement {
       const needle = String(this._config.machine).toLowerCase();
       const needleSlug = needle.replace(/\s+/g, '_');
       const matched = candidates.find(id =>
-        this._hass.states[id]?.attributes?.friendly_name?.toLowerCase().includes(needle) ||
+        this._hass.states[id].attributes.friendly_name?.toLowerCase().includes(needle) ||
         id.toLowerCase().includes(needleSlug));
       if (matched) return matched;
     }
-    return candidates[0] || null;
+    const found = candidates.find(id =>
+      this._hass.states[id].attributes.friendly_name?.toLowerCase().includes('gaggiuino'));
+    return found || candidates[0] || null;
   }
 
   _getSwitchEntity() {
