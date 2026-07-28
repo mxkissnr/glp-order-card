@@ -467,6 +467,7 @@ class GlpOrderCard extends HTMLElement {
     this._enabled   = true;
     this._selected  = null;
     this._selectedVariant = null;
+    this._selectedBeanId  = null;
     this._activeBeans = null;
     this._activeOrder = null;
     this._lastShot  = null;
@@ -978,7 +979,7 @@ class GlpOrderCard extends HTMLElement {
       el.addEventListener('click', () => {
         const prev = this._selected;
         this._selected = this._selected === el.dataset.item ? null : el.dataset.item;
-        if (this._selected !== prev) this._selectedVariant = null;
+        if (this._selected !== prev) { this._selectedVariant = null; this._selectedBeanId = null; }
         // Update selected state without replacing the DOM
         this.shadowRoot.querySelectorAll('.menu-item').forEach(m => {
           m.classList.toggle('selected', m.dataset.item === this._selected);
@@ -1012,6 +1013,7 @@ class GlpOrderCard extends HTMLElement {
         this._activeOrder     = null;
         this._selected        = null;
         this._selectedVariant = null;
+        this._selectedBeanId  = null;
         this._render();
       });
     }
@@ -1038,8 +1040,19 @@ class GlpOrderCard extends HTMLElement {
     };
   }
 
+  // Bean-backed variant chips carry the bean's stable id (#35) alongside the
+  // display label, so selection can be tracked and submitted by id — the
+  // label alone is ambiguous whenever a bean gets deleted and reimported
+  // under the same name (same bug class as gaggiuino-local-profiler#456).
+  _beanIdForLabel(v) {
+    const bean = (this._activeBeans || []).find(b => (b.decaf ? `${b.name} · Decaf` : b.name) === v);
+    return bean?.id ?? null;
+  }
+
   _variantChipHtml(v) {
-    return `<div class="variant-chip${this._selectedVariant === v ? ' selected' : ''}" data-variant="${_esc(v)}">${_esc(v)}</div>`;
+    const beanId = this._beanIdForLabel(v);
+    const idAttr = beanId != null ? ` data-bean-id="${_esc(beanId)}"` : '';
+    return `<div class="variant-chip${this._selectedVariant === v ? ' selected' : ''}" data-variant="${_esc(v)}"${idAttr}>${_esc(v)}</div>`;
   }
 
   // Shared by _renderOrderForm() and _updateVariantPicker() so the two never
@@ -1059,12 +1072,19 @@ class GlpOrderCard extends HTMLElement {
     return specialitySection + normalSection;
   }
 
+  // Id-first with a name fallback (#35), mirroring resolveBeanForAnnotation()
+  // in gaggiuino-local-profiler (lib/services/LibraryService.js, #456): the
+  // id is trusted exclusively when it resolves; the label match only covers
+  // the case where it doesn't (bean removed from _activeBeans mid-session).
   _getSelectedBean() {
     const selectedItem = this._menu?.find(m => m.name === this._selected);
     if (!selectedItem?.useBeans || !this._selectedVariant) return null;
-    return (this._activeBeans || []).find(b =>
-      (b.decaf ? `${b.name} · Decaf` : b.name) === this._selectedVariant
-    ) || null;
+    const beans = this._activeBeans || [];
+    if (this._selectedBeanId != null) {
+      const byId = beans.find(b => b.id === this._selectedBeanId);
+      if (byId) return byId;
+    }
+    return beans.find(b => (b.decaf ? `${b.name} · Decaf` : b.name) === this._selectedVariant) || null;
   }
 
   _beanInfoHtml(bean, lang) {
@@ -1126,7 +1146,9 @@ class GlpOrderCard extends HTMLElement {
   _bindVariantChips() {
     this.shadowRoot.querySelectorAll('.variant-chip').forEach(chip => {
       chip.addEventListener('click', () => {
-        this._selectedVariant = this._selectedVariant === chip.dataset.variant ? null : chip.dataset.variant;
+        const wasSelected = this._selectedVariant === chip.dataset.variant;
+        this._selectedVariant = wasSelected ? null : chip.dataset.variant;
+        this._selectedBeanId  = wasSelected ? null : (chip.dataset.beanId != null ? Number(chip.dataset.beanId) : null);
         this.shadowRoot.querySelectorAll('.variant-chip').forEach(c => {
           c.classList.toggle('selected', c.dataset.variant === this._selectedVariant);
         });
@@ -1172,6 +1194,10 @@ class GlpOrderCard extends HTMLElement {
         body: JSON.stringify({
           item:     this._selected,
           variant:  this._selectedVariant || undefined,
+          // Stable id alongside the name (#35): lets the app resolve
+          // order->bean attribution id-first, surviving a bean delete +
+          // reimport under the same name — see _getSelectedBean() above.
+          beanId:   this._getSelectedBean()?.id ?? undefined,
           note,
           customer: haUser.name,
           haUserId: haUser.id,
@@ -1183,6 +1209,7 @@ class GlpOrderCard extends HTMLElement {
         this._activeOrder = order;
         this._selected    = null;
         this._selectedVariant = null;
+        this._selectedBeanId  = null;
       }
     } catch { /* network/API failure: silently falls back to the order form via _submitting reset below */ }
     this._submitting = false;
