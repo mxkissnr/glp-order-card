@@ -67,7 +67,7 @@ function loadCard() {
     navigator: { language: 'en-US' },
   };
   vm.createContext(context);
-  vm.runInContext(src, context, { filename: 'glp-order-card.js' });
+  vm.runInContext(src, context, { filename: path.join(__dirname, '..', 'glp-order-card.js') });
 
   return registry['glp-order-card'];
 }

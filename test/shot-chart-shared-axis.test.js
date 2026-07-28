@@ -32,7 +32,7 @@ function loadShotChart() {
     navigator: { language: 'en-US' },
   };
   vm.createContext(context);
-  vm.runInContext(src, context, { filename: 'glp-order-card.js' });
+  vm.runInContext(src, context, { filename: path.join(__dirname, '..', 'glp-order-card.js') });
 
   const GlpOrderCard = registry['glp-order-card'];
   return shot => GlpOrderCard.prototype._shotChart.call(null, shot);
