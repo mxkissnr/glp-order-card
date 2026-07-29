@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.18.1] – 2026-07-29
+### Fixed
+- **`_safeUrl()` returned the raw, unvalidated input instead of the re-serialized `URL.href`**, dropping the quote/angle-bracket neutralization that keeps a malicious href from breaking out of an `href="..."` attribute (glp-card.js's `safeUrl()` already did this correctly). `_getBase()` now strips the trailing slash a bare-origin `href` carries, so `${base}/${path}` callers don't end up with a double slash. Closes #46
+- **`_findMachineStatusEntity()` was missing a fallback tier** present in glp-card.js's `_resolvePrefix()` (matching on `friendly_name` containing "gaggiuino" before falling back to the first candidate), so two order cards on the same dashboard could resolve to different machines. Now aligned with glp-card.js's matching order. Closes #46
+- **Order→bean attribution matched by display-label string instead of a stable id** — the same bug class already fixed for shot annotations in gaggiuino-local-profiler#456: a bean deleted and reimported under the same name gets a new id, so an existing order reference kept resolving to the wrong (or no) bean. Variant chips now carry `data-bean-id`; selection is tracked by id with a name fallback for older/unresolvable selections, mirroring `resolveBeanForAnnotation()`. The order POST payload now includes `beanId` alongside the existing name field. Closes #35
+### Added
+- **Playwright E2E smoke test** (`test/e2e/smoke.test.mjs`) covering the optimistic-UI guard (`_clickBlocked`/`_pendingRender` in `set hass()`): asserts the order button enables after variant selection and that a `hass` update arriving between `pointerdown` and `click` doesn't reset an in-progress selection. Shares its static-server/mock-API harness (`scripts/e2e-harness.mjs`) with the screenshot script instead of duplicating it. CI now installs the Chromium binary before running the coverage suite. Closes #48
+
 ## [1.18.0] – 2026-07-26
 ### Changed
 - **Flat HA-theme redesign — hybrid tokens, decorative glow removed.** Companion to glp-lovelace-card's identical redesign; purely visual/theming, no behavior change except the chart fix called out below. Closes #39
