@@ -27,11 +27,10 @@
 // Run: node scripts/screenshot.mjs
 // Requires: npm install --save-dev playwright && npx playwright install chromium
 
-import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { repoRoot, startServer, mockApi } from './e2e-harness.mjs';
 
 function flag(name, envVar, fallback) {
   const eq = process.argv.find(a => a.startsWith(`--${name}=`));
@@ -40,8 +39,6 @@ function flag(name, envVar, fallback) {
   return fallback;
 }
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot  = path.join(__dirname, '..');
 const outDir    = path.join(repoRoot, 'docs', 'screenshots');
 const LIGHT_SHORTHAND = process.argv.includes('--light');
 const HA_THEME  = flag('ha-theme', 'GLP_HA_THEME', LIGHT_SHORTHAND ? 'light' : 'dark');
@@ -52,8 +49,6 @@ const outFile   = flag('out', '', path.join(outDir, HA_THEME === 'light' ? 'card
 // (e.g. a common "Indigo 900"-style theme) without needing a whole separate
 // dark/light theme preset for it.
 const PRIMARY_COLOR_OVERRIDE = flag('primary-color', 'GLP_PRIMARY_COLOR', '');
-
-const MIME = { '.js': 'text/javascript', '.html': 'text/html', '.svg': 'image/svg+xml', '.png': 'image/png' };
 
 // HA theme CSS variables the card reads via the GLP-TOKENS fallback chain.
 // Values match the "GLP Light"/"GLP Dark" themes in glp-ha-theme.yaml (from
@@ -109,26 +104,6 @@ ${THEME_VARS}  }
 </body>
 </html>`;
 
-function startServer() {
-  const server = http.createServer((req, res) => {
-    const urlPath = req.url.split('?')[0];
-    if (urlPath === '/__harness.html') {
-      res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end(HARNESS_HTML);
-      return;
-    }
-    const filePath = path.join(repoRoot, decodeURIComponent(urlPath));
-    if (!filePath.startsWith(repoRoot)) { res.writeHead(403); res.end(); return; }
-    fs.readFile(filePath, (err, data) => {
-      if (err) { res.writeHead(404); res.end('not found'); return; }
-      const ext = path.extname(filePath);
-      res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
-      res.end(data);
-    });
-  });
-  return new Promise(resolve => server.listen(0, '127.0.0.1', () => resolve(server)));
-}
-
 // ── Demo data ──────────────────────────────────────────────────────────
 const now = Date.now();
 
@@ -148,18 +123,10 @@ const ACTIVE_BEANS = [
   { name: 'Bombe', origin: 'BR', variety: 'Bourbon, Catuai', process: 'Natural', notes: 'Schokolade, Nougat, Karamell', decaf: false },
 ];
 
-async function mockApi(page) {
-  await page.route('**/api/orders/menu', route => route.fulfill({ json: MENU }));
-  await page.route('**/api/orders/settings', route => route.fulfill({ json: SETTINGS }));
-  await page.route('**/api/orders/queue-eta', route => route.fulfill({ json: QUEUE_ETA }));
-  await page.route('**/api/orders/active-beans', route => route.fulfill({ json: ACTIVE_BEANS }));
-  await page.route('**/api/orders/mine**', route => route.fulfill({ json: [] }));
-}
-
 async function main() {
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
 
-  const server = await startServer();
+  const server = await startServer(HARNESS_HTML);
   const { port } = server.address();
   const baseUrl = `http://127.0.0.1:${port}`;
 
@@ -174,7 +141,7 @@ async function main() {
     viewport: { width: 500, height: 700 },
     colorScheme: OS_SCHEME === 'light' ? 'light' : 'dark',
   });
-  await mockApi(page);
+  await mockApi(page, { menu: MENU, settings: SETTINGS, queueEta: QUEUE_ETA, activeBeans: ACTIVE_BEANS });
   await page.goto(`${baseUrl}/__harness.html`);
 
   // The page.evaluate()/waitForFunction() callbacks below run inside the
