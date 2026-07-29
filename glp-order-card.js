@@ -517,12 +517,12 @@ class GlpOrderCard extends HTMLElement {
       const needle = String(this._config.machine).toLowerCase();
       const needleSlug = needle.replace(/\s+/g, '_');
       const matched = candidates.find(id =>
-        this._hass.states[id].attributes.friendly_name?.toLowerCase().includes(needle) ||
+        this._hass.states[id]?.attributes?.friendly_name?.toLowerCase().includes(needle) ||
         id.toLowerCase().includes(needleSlug));
       if (matched) return matched;
     }
     const found = candidates.find(id =>
-      this._hass.states[id].attributes.friendly_name?.toLowerCase().includes('gaggiuino'));
+      this._hass.states[id]?.attributes?.friendly_name?.toLowerCase().includes('gaggiuino'));
     return found || candidates[0] || null;
   }
 
