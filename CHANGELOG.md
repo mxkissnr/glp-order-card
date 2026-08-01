@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.18.2] – 2026-08-01
+### Fixed
+- **XSS: `_originHtml()` interpolated `o.percent` into the HTML label without escaping it**, the one call site in `_beanInfoHtml()` not wrapped in `_esc()` before reaching `innerHTML` (every other field, including the sibling `o.code` path, already was). Flagged by the HACS reviewer during the `hacs/default` submission review. Closes #57
+
 ## [1.18.1] – 2026-07-29
 ### Fixed
 - **`_safeUrl()` returned the raw, unvalidated input instead of the re-serialized `URL.href`**, dropping the quote/angle-bracket neutralization that keeps a malicious href from breaking out of an `href="..."` attribute (glp-card.js's `safeUrl()` already did this correctly). `_getBase()` now strips the trailing slash a bare-origin `href` carries, so `${base}/${path}` callers don't end up with a double slash. Closes #46

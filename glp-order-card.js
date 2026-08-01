@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.18.1';
+const GLP_ORDER_CARD_VERSION = '1.18.2';
 
 // Menu items younger than this show the NEW badge (config: new_badge_days)
 const NEW_BADGE_DAYS_DEFAULT = 7;
@@ -23,7 +23,7 @@ function _originHtml(origins, lang) {
     let name = code;
     try { name = new Intl.DisplayNames([lang || 'en'], { type: 'region' }).of(code) || code; } catch { /* unsupported/invalid region code, keep raw code fallback */ }
     const label = `${flag} ${_esc(name)}`;
-    return o.percent != null ? `${label} ${o.percent}%` : label;
+    return o.percent != null ? `${label} ${_esc(o.percent)}%` : label;
   }).join(' + ');
 }
 
