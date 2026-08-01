@@ -62,3 +62,8 @@ test('_originHtml() localizes the country name per requested language', () => {
 test('_originHtml() returns an empty string for an empty origins array', () => {
   assert.equal(originHtml([], 'en'), '');
 });
+
+test('_originHtml() escapes the percent value to prevent HTML injection', () => {
+  const html = originHtml([{ code: 'BR', percent: '<img src=x onerror=alert(1)>' }], 'en');
+  assert.ok(!html.includes('<img'));
+});
