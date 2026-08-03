@@ -1,0 +1,141 @@
+// Machine colour theme config tests (#62). Loads the real glp-order-card.js
+// into a sandboxed vm context (same test-only source patch as
+// machine-config.test.js) so _resolveTheme()/_applyThemeVars()/
+// _machineGlyphHtml() can be exercised directly against the real, shipped
+// code — not a re-implementation.
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+
+function makeStyleStub() {
+  const props = new Map();
+  return {
+    setProperty(name, value) { props.set(name, value); },
+    getPropertyValue(name) { return props.get(name) || ''; },
+    _props: props,
+  };
+}
+
+function loadGlpOrderCard() {
+  let src = fs.readFileSync(path.join(__dirname, '..', 'glp-order-card.js'), 'utf8');
+  src = src.replace(
+    "customElements.define('glp-order-card', GlpOrderCard);",
+    "customElements.define('glp-order-card', GlpOrderCard); globalThis.__GlpOrderCard = GlpOrderCard;"
+  );
+
+  class HTMLElement {}
+  const context = {
+    HTMLElement, customElements: { define() {} }, window: {}, console, URL,
+    navigator: { language: 'en-US' },
+  };
+  context.globalThis = context;
+  vm.createContext(context);
+  vm.runInContext(src, context, { filename: path.join(__dirname, '..', 'glp-order-card.js') });
+  return context.__GlpOrderCard;
+}
+
+const GlpOrderCard = loadGlpOrderCard();
+
+// assert.deepEqual chokes on plain objects created inside the vm context
+// (different realm, so `instanceof Object`/prototype identity checks used by
+// the strict assert module fail even though the shape matches) — compare
+// the {a,b} fields individually instead.
+function assertThemePair(actual, a, b) {
+  assert.equal(actual?.a, a);
+  assert.equal(actual?.b, b);
+}
+
+function makeInstance(config) {
+  const inst = Object.create(GlpOrderCard.prototype);
+  inst._config = config;
+  inst._instanceId = 1;
+  inst.style = makeStyleStub();
+  return inst;
+}
+
+test('_resolveTheme() returns null when no theme/accent config is set', () => {
+  const inst = makeInstance({});
+  assert.equal(inst._resolveTheme(), null);
+});
+
+test('_resolveTheme() resolves a known preset key to its exact hex pair', () => {
+  const inst = makeInstance({ theme: 'ember-espresso' });
+  assertThemePair(inst._resolveTheme(), '#dc4a1f', '#f5a623');
+});
+
+test('_resolveTheme() returns null for an unknown preset key', () => {
+  const inst = makeInstance({ theme: 'not-a-real-preset' });
+  assert.equal(inst._resolveTheme(), null);
+});
+
+test('_resolveTheme() resolves accent_color to a flat a===b pair', () => {
+  const inst = makeInstance({ accent_color: '#123abc' });
+  assertThemePair(inst._resolveTheme(), '#123abc', '#123abc');
+});
+
+test('_resolveTheme() rejects an invalid accent_color and falls back (no theme configured)', () => {
+  const inst = makeInstance({ accent_color: 'red' });
+  assert.equal(inst._resolveTheme(), null);
+});
+
+test('_resolveTheme() rejects a CSS/markup-injection accent_color value', () => {
+  const inst = makeInstance({ accent_color: '#fff"><script>alert(1)</script>' });
+  assert.equal(inst._resolveTheme(), null);
+});
+
+test('_resolveTheme() resolves a valid accent_gradient two-stop array', () => {
+  const inst = makeInstance({ accent_gradient: ['#111111', '#eeeeee'] });
+  assertThemePair(inst._resolveTheme(), '#111111', '#eeeeee');
+});
+
+test('_resolveTheme() rejects an accent_gradient with one invalid stop', () => {
+  const inst = makeInstance({ accent_gradient: ['#111111', 'not-a-hex'] });
+  assert.equal(inst._resolveTheme(), null);
+});
+
+test('_resolveTheme() precedence: accent_gradient wins over accent_color and theme', () => {
+  const inst = makeInstance({
+    theme: 'ember-espresso',
+    accent_color: '#000000',
+    accent_gradient: ['#111111', '#eeeeee'],
+  });
+  assertThemePair(inst._resolveTheme(), '#111111', '#eeeeee');
+});
+
+test('_resolveTheme() precedence: accent_color wins over theme', () => {
+  const inst = makeInstance({ theme: 'ember-espresso', accent_color: '#000000' });
+  assertThemePair(inst._resolveTheme(), '#000000', '#000000');
+});
+
+test('_applyThemeVars() sets --glp-accent-start/--glp-accent-end to the resolved theme', () => {
+  const inst = makeInstance({ theme: 'twilight-turkish' });
+  inst._applyThemeVars();
+  assert.equal(inst.style.getPropertyValue('--glp-accent-start'), '#0891b2');
+  assert.equal(inst.style.getPropertyValue('--glp-accent-end'), '#4338ca');
+});
+
+test('_applyThemeVars() falls back to the --primary-color default when no theme is configured', () => {
+  const inst = makeInstance({});
+  inst._applyThemeVars();
+  assert.equal(inst.style.getPropertyValue('--glp-accent-start'), 'var(--primary-color, #f59e0b)');
+  assert.equal(inst.style.getPropertyValue('--glp-accent-end'), 'var(--primary-color, #f59e0b)');
+});
+
+test('_machineGlyphHtml() embeds a per-instance-unique gradient id and the given size class', () => {
+  const inst = makeInstance({});
+  const html = inst._machineGlyphHtml('header', 'hdr');
+  assert.match(html, /class="machine-glyph header"/);
+  assert.match(html, /id="glp-oc-icon-1-hdr"/);
+  assert.match(html, /url\(#glp-oc-icon-1-hdr\)/);
+});
+
+test('_machineGlyphHtml() gives header and status usages distinct gradient ids on the same instance', () => {
+  const inst = makeInstance({});
+  const header = inst._machineGlyphHtml('header', 'hdr');
+  const status = inst._machineGlyphHtml('status', 'stat');
+  assert.notEqual(header.match(/id="([^"]+)"/)[1], status.match(/id="([^"]+)"/)[1]);
+});

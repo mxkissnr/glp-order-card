@@ -1,7 +1,8 @@
 // Proves _applySemanticColorContrast() actually RUNS and picks the correct
 // --glp-ok/--glp-warn/--glp-err (by --glp-bg luminance) and --glp-accent-text
-// (by --glp-accent luminance, independently) — not just that the method
-// exists. Loads the real glp-order-card.js into a
+// (by the DARKER of --glp-accent-start/--glp-accent-end's luminance,
+// independently — see #62's machine colour theme) — not just that the
+// method exists. Loads the real glp-order-card.js into a
 // sandboxed vm context with a minimal fake DOM (style objects backed by a
 // plain Map, no real CSS engine) sufficient to drive the method end-to-end:
 // getComputedStyle(this).getPropertyValue('--glp-bg') reads back a
@@ -92,23 +93,39 @@ test('_applySemanticColorContrast() picks the dark-safe constants for a near-bla
   assert.equal(card.style.getPropertyValue('--glp-err'), '#ef4444');
 });
 
-test('_applySemanticColorContrast() picks dark --glp-accent-text for a light accent (amber)', () => {
+test('_applySemanticColorContrast() picks dark --glp-accent-text for a flat light accent (amber)', () => {
   const card = new GlpOrderCard();
   card.style.setProperty('--glp-bg', 'rgb(24, 24, 27)');
-  card.style.setProperty('--glp-accent', 'rgb(245, 158, 11)'); // #f59e0b, GLP Dark's default primary
+  // Flat theme: start === end, #f59e0b GLP Dark's default primary
+  card.style.setProperty('--glp-accent-start', 'rgb(245, 158, 11)');
+  card.style.setProperty('--glp-accent-end', 'rgb(245, 158, 11)');
   card._applySemanticColorContrast();
   assert.equal(card.style.getPropertyValue('--glp-accent-text'), '#000');
 });
 
-test('_applySemanticColorContrast() picks light --glp-accent-text for a dark accent (indigo) — the .order-btn bug', () => {
+test('_applySemanticColorContrast() picks light --glp-accent-text for a flat dark accent (indigo) — the .order-btn bug', () => {
   const card = new GlpOrderCard();
   card.style.setProperty('--glp-bg', 'rgb(255, 255, 255)');
-  card.style.setProperty('--glp-accent', 'rgb(26, 35, 126)'); // #1a237e, Material Indigo 900 — a common dark theme primary
+  // Flat theme: start === end, #1a237e Material Indigo 900 — a common dark theme primary
+  card.style.setProperty('--glp-accent-start', 'rgb(26, 35, 126)');
+  card.style.setProperty('--glp-accent-end', 'rgb(26, 35, 126)');
   card._applySemanticColorContrast();
   assert.equal(card.style.getPropertyValue('--glp-accent-text'), '#fff');
 });
 
-test('_applySemanticColorContrast() is a no-op (does not throw) when --glp-bg/--glp-accent are unset', () => {
+test('_applySemanticColorContrast() picks --glp-accent-text for the DARKER of the two gradient stops (worst case)', () => {
+  const card = new GlpOrderCard();
+  card.style.setProperty('--glp-bg', 'rgb(24, 24, 27)');
+  // Gradient theme: light amber start, dark indigo end — .order-btn's fill
+  // sweeps across both, so text must stay readable against the indigo end,
+  // not just default to the (readable-for-black-text) amber start.
+  card.style.setProperty('--glp-accent-start', 'rgb(245, 158, 11)');
+  card.style.setProperty('--glp-accent-end', 'rgb(26, 35, 126)');
+  card._applySemanticColorContrast();
+  assert.equal(card.style.getPropertyValue('--glp-accent-text'), '#fff');
+});
+
+test('_applySemanticColorContrast() is a no-op (does not throw) when --glp-bg/--glp-accent-start/--glp-accent-end are unset', () => {
   const card = new GlpOrderCard();
   assert.doesNotThrow(() => card._applySemanticColorContrast());
   assert.equal(card.style.getPropertyValue('--glp-ok'), '');
