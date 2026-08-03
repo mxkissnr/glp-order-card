@@ -158,20 +158,31 @@ const STYLES = `
     --glp-border:  var(--divider-color, #3f3f46);
     --glp-text:    var(--primary-text-color, #e4e4e7);
     --glp-sub:     var(--secondary-text-color, #a1a1aa);
-    /* --glp-accent-start/--glp-accent-end (#62): per-machine colour theme —
-       both default to the same single --primary-color value, so a card with
-       no theme configured renders exactly as before (one flat colour, start
-       === end). A configured theme (setConfig() theme/accent_color/
-       accent_gradient, resolved by _resolveTheme()) overwrites both as an
-       inline host style in _applyThemeVars(), called every render. --glp-accent
-       is kept as a single-colour legacy alias (= --glp-accent-start) for every
-       spot that only ever needed one accent value (menu-item/variant-chip
-       selection state, note-input focus ring, status-card.pending) — those
-       stay single-colour even under a gradient theme; only .order-btn (the
-       one full-strength fill with text on it) paints the actual two-stop
-       gradient across --glp-accent-start/--glp-accent-end directly. */
+    /* --glp-accent-start/--glp-accent-end: per-machine colour theme (8
+       curated presets or a custom flat colour/gradient, see the
+       theme/accent_color/accent_gradient setConfig() keys and this file's
+       theme-resolving method). Both default directly to HA's --primary-color,
+       so a card with no theme configured renders identically to before this
+       existed (flat colour = both stops equal). The theme-resolving method
+       sets these as inline styles on the host (highest-priority cascade,
+       same pattern as _applySemanticColorContrast() below) only when a
+       theme is configured; otherwise they fall through to these stylesheet
+       defaults.
+       --glp-accent itself is kept as the legacy single-colour alias (e.g.
+       glp-card.js's preheat progress bar fill, or any spot in either card
+       that only ever needed one accent value) and MUST derive FROM
+       --glp-accent-start (not the other way around) — it resolves through
+       --glp-accent-start via the cascade, so it also picks up a configured
+       theme's first stop automatically. Getting this direction backwards
+       (--glp-accent-start deriving from --glp-accent) would leave
+       --glp-accent permanently pinned to --primary-color, silently ignoring
+       any configured theme wherever old code still reads --glp-accent
+       directly. Likewise --glp-accent-end derives from --glp-accent-start
+       (not an independent --primary-color default) so that code which only
+       ever sets --glp-accent-start (forgetting the end stop) degrades to a
+       flat colour instead of an unintentional two-tone mismatch. */
     --glp-accent-start: var(--primary-color, #f59e0b);
-    --glp-accent-end:   var(--primary-color, #f59e0b);
+    --glp-accent-end:   var(--glp-accent-start);
     --glp-accent:       var(--glp-accent-start);
     /* --glp-accent-text: the readable-on-accent text/icon color, for
        anything rendering directly on a full-strength --glp-accent fill (e.g.
@@ -186,25 +197,25 @@ const STYLES = `
        independent input from --glp-bg's luminance, which drives
        --glp-ok/--glp-warn/--glp-err above — theme darkness and accent
        darkness are orthogonal). When a gradient theme is active (start !==
-       end), the DARKER of the two stops is used — .order-btn's fill sweeps
-       across both, so text must stay readable against the worst case, not
-       just the first stop; a flat theme has start === end and reduces to the
-       original single-color check. Uses pure #000/#fff with the same 0.179
-       WCAG flip-point threshold: at that exact crossover luminance, black and
-       white text both measure ~4.58:1 against it, and either color's
-       contrast only increases moving away from that point — so, unlike
-       --glp-ok/--glp-warn/--glp-err (which had to be checked against
-       specific known theme values), #000/#fff at the 0.179 split is a
-       mathematical guarantee of >=4.58:1 against ANY possible accent color.
-       Verified against real-world values: GLP Dark #f59e0b (black text
-       9.78:1), GLP Light #d97706 (6.59:1), HA frontend default #03a9f4
-       (7.99:1) all correctly pick black; Material Indigo 900 #1a237e
-       correctly picks white (13.24:1) instead of the old hardcoded dark
-       text's 1.13:1. glp-card.js has no full-strength accent fill with text
-       on it today (--glp-accent is only a progress-bar fill), so this token
-       is unused here — kept in sync anyway so the shared block doesn't
-       drift, and so _applySemanticColorContrast() stays identical in both
-       files. */
+       end), the DARKER of the two stops is used — a fill sweeping across
+       both (e.g. glp-order-card.js's .order-btn) must stay readable against
+       the worst case, not just the first stop; a flat theme has start ===
+       end and reduces to the original single-color check. Uses pure #000/
+       #fff with the same 0.179 WCAG flip-point threshold: at that exact
+       crossover luminance, black and white text both measure ~4.58:1 against
+       it, and either color's contrast only increases moving away from that
+       point — so, unlike --glp-ok/--glp-warn/--glp-err (which had to be
+       checked against specific known theme values), #000/#fff at the 0.179
+       split is a mathematical guarantee of >=4.58:1 against ANY possible
+       accent color. Verified against real-world values: GLP Dark #f59e0b
+       (black text 9.78:1), GLP Light #d97706 (6.59:1), HA frontend default
+       #03a9f4 (7.99:1) all correctly pick black; Material Indigo 900
+       #1a237e correctly picks white (13.24:1) instead of the old hardcoded
+       dark text's 1.13:1. glp-card.js has no full-strength accent fill with
+       text on it today (--glp-accent is only a progress-bar fill), so this
+       token is unused there for that reason alone — kept in sync anyway so
+       the shared block doesn't drift, and so _applySemanticColorContrast()
+       stays identical in both files. */
     --glp-accent-text: #000;
     /* --glp-ok/--glp-warn/--glp-err deliberately do NOT chain through HA's
        own --success-color/--warning-color/--error-color. Checked both HA
