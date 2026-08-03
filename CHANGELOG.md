@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+### Added
+- **Per-machine colour theme (8 presets + custom flat colour/gradient) and a new detailed Gaggia Classic machine icon.** New `setConfig()` options: `theme` (one of 8 curated preset keys — `amber-americano`, `ruby-ristretto`, `copper-cortado`, `twilight-turkish`, `marbled-macchiato`, `ember-espresso`, `mulberry-mocha`, `frosty-flat-white`), `accent_color` (custom flat `#rrggbb`), and `accent_gradient` (custom two-stop `["#rrggbb1","#rrggbb2"]`) — precedence `accent_gradient` > `accent_color` > `theme` > the card's previous single-colour default. This is the standalone/YAML-only mirror of the same storage contract gaggiuino-local-profiler#594 (app PR #595) added to `machines.theme`; the app becomes the primary source once card-to-app theme sync exists (a later round), with these YAML options as the override. Same config keys and preset mapping land in parallel in glp-lovelace-card for cross-card consistency. Closes #62
+  - `GLP-TOKENS`'s single `--glp-accent` is now `--glp-accent-start`/`--glp-accent-end` (both default to the same `--primary-color` value, so an unthemed card renders identically to before); `--glp-accent` is kept as a single-colour legacy alias for the low-opacity `color-mix()` spots that only ever needed one value. `.order-btn` now paints an actual `linear-gradient()` across both stops.
+  - `_applySemanticColorContrast()` picks `--glp-accent-text` from the DARKER of the two gradient stops (the worst case `.order-btn`'s full-strength fill sweeps across), not just the first stop — a flat theme (`start === end`) reduces to the previous single-color check. `test/semantic-color-contrast.test.js` gained a case proving this.
+  - New small colour-themed machine icon badge (a detailed Gaggia Classic, geometry from an approved GLP Theme Lab mockup) next to the card header title and the multi-machine status line's machine name, replacing the header's generic cup glyph and the `🔀` emoji respectively. Each rendered instance gets a per-card-instance-unique SVG gradient id so more than one card on a dashboard doesn't collide.
+  - New `test/theme-config.test.js` covers `_resolveTheme()`'s precedence and strict `#rrggbb`-only hex validation (rejecting CSS colour names and injection-shaped values), `_applyThemeVars()`'s fallback, and `_machineGlyphHtml()`'s per-instance id uniqueness.
+
 ## [1.18.2] – 2026-08-01
 ### Fixed
 - **XSS: `_originHtml()` interpolated `o.percent` into the HTML label without escaping it**, the one call site in `_beanInfoHtml()` not wrapped in `_esc()` before reaching `innerHTML` (every other field, including the sibling `o.code` path, already was). Flagged by the HACS reviewer during the `hacs/default` submission review. Closes #57

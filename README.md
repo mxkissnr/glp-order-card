@@ -68,6 +68,7 @@ glp_url: http://homeassistant.local:8099   # optional — direct port URL (auto-
 switch_entity: switch.espresso_plug        # optional — auto-detected from GLP integration sensor
 title: Bestellen                           # optional — card header title
 machine: Kitchen GaggiMate                 # optional — multi-machine setups only, see below
+theme: ember-espresso                      # optional — machine colour theme, see below
 ```
 
 ### Options
@@ -79,6 +80,36 @@ machine: Kitchen GaggiMate                 # optional — multi-machine setups o
 | `title` | Card header title | `Bestellen` / `Order` (auto-detected language) |
 | `new_badge_days` | How many days newly added menu items show the NEW badge | `7` |
 | `machine` | Name/slug of a specific machine, for setups with more than one GLP machine (the app's multi-machine mode). Used to auto-detect `switch_entity` from the right machine's `*_machine_status` entity, and tags every placed order with this machine name (shown in the order's status card). The app instance/ingress URL is still the same for every machine — this only targets *which* machine's queue/switch the card cares about. | *(auto — first machine found)* |
+| `theme` | One of 8 curated colour presets — see below. | *(none — HA theme's `--primary-color`)* |
+| `accent_color` | Custom flat accent colour as a `#rrggbb` hex value. Overrides `theme` if both are set. | *(none)* |
+| `accent_gradient` | Custom two-stop gradient as `["#rrggbb1", "#rrggbb2"]`. Overrides both `theme` and `accent_color` if set. | *(none)* |
+
+### Machine colour theme
+
+The card's accent colour (order button, selection highlights, and the small machine icon next
+to the header/status line) can be themed per machine, so machines are easy to tell apart on a
+dashboard with more than one. Pick one of 8 curated presets via `theme`, or set a fully custom
+flat colour (`accent_color`) or two-stop gradient (`accent_gradient`) instead:
+
+```yaml
+theme: twilight-turkish
+```
+```yaml
+accent_color: "#7f1d1d"
+```
+```yaml
+accent_gradient: ["#dc4a1f", "#f5a623"]
+```
+
+The 8 preset keys: `amber-americano`, `ruby-ristretto`, `copper-cortado`, `twilight-turkish`,
+`marbled-macchiato`, `ember-espresso`, `mulberry-mocha`, `frosty-flat-white`.
+
+**This is a standalone/YAML-only fallback.** The GLP app itself stores a colour theme per
+machine (machine settings → colour picker) that the app's own UI already uses. The app and
+this card don't sync themes yet — that's planned for a later round, at which point the app's
+stored `machines.theme` becomes the primary source and these YAML options become the override
+for cases where you want this card to show a different (or no) theme than the app does. Until
+then, set `theme`/`accent_color`/`accent_gradient` here directly to theme this card.
 
 ## How it works
 
