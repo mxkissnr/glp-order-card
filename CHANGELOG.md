@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.19.0] – 2026-08-03
 ### Added
 - **Per-machine colour theme (8 presets + custom flat colour/gradient) and a new detailed Gaggia Classic machine icon.** New `setConfig()` options: `theme` (one of 8 curated preset keys — `amber-americano`, `ruby-ristretto`, `copper-cortado`, `twilight-turkish`, `marbled-macchiato`, `ember-espresso`, `mulberry-mocha`, `frosty-flat-white`), `accent_color` (custom flat `#rrggbb`), and `accent_gradient` (custom two-stop `["#rrggbb1","#rrggbb2"]`) — precedence `accent_gradient` > `accent_color` > `theme` > the card's previous single-colour default. This is the standalone/YAML-only mirror of the same storage contract gaggiuino-local-profiler#594 (app PR #595) added to `machines.theme`; the app becomes the primary source once card-to-app theme sync exists (a later round), with these YAML options as the override. Same config keys and preset mapping land in parallel in glp-lovelace-card for cross-card consistency. Closes #62
   - `GLP-TOKENS`'s single `--glp-accent` is now `--glp-accent-start`/`--glp-accent-end` (both default to the same `--primary-color` value, so an unthemed card renders identically to before); `--glp-accent` is kept as a single-colour legacy alias for the low-opacity `color-mix()` spots that only ever needed one value. `.order-btn` now paints an actual `linear-gradient()` across both stops.
