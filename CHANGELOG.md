@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.19.1] – 2026-08-04
+### Changed
+- **CI now audits the checked-in `package-lock.json` for known vulnerabilities** — `npm audit --audit-level=high` runs in `validate.yml` right after `npm ci`, closing a gap where `dependency-review-action` only checked PR diffs, not the existing tree. Closes #71
+- **Fixed a transitive dev-dependency vulnerability**: `brace-expansion` (via ESLint's `minimatch`) bumped to 5.0.9, completing the `maxLength` mitigation for CVE-2026-14257 (GHSA-rgw5-rvv9-x895) that 5.0.8 left incomplete. Dev tooling only, not part of the shipped card code.
+- Routine GitHub Actions/dev-dependency bumps: `actions/dependency-review-action` 4.9.0 → 5.0.0, `actions/upload-artifact` 4.6.2 → 7.0.1, `playwright` 1.62.0 → 1.62.1.
+- Added an AI-generated-project disclaimer to the README. Closes #69
+
+No changes to the card's runtime behavior — this release is CI/tooling hardening only.
+
 ## [1.19.0] – 2026-08-03
 ### Added
 - **Per-machine colour theme (8 presets + custom flat colour/gradient) and a new detailed Gaggia Classic machine icon.** New `setConfig()` options: `theme` (one of 8 curated preset keys — `amber-americano`, `ruby-ristretto`, `copper-cortado`, `twilight-turkish`, `marbled-macchiato`, `ember-espresso`, `mulberry-mocha`, `frosty-flat-white`), `accent_color` (custom flat `#rrggbb`), and `accent_gradient` (custom two-stop `["#rrggbb1","#rrggbb2"]`) — precedence `accent_gradient` > `accent_color` > `theme` > the card's previous single-colour default. This is the standalone/YAML-only mirror of the same storage contract gaggiuino-local-profiler#594 (app PR #595) added to `machines.theme`; the app becomes the primary source once card-to-app theme sync exists (a later round), with these YAML options as the override. Same config keys and preset mapping land in parallel in glp-lovelace-card for cross-card consistency. Closes #62
