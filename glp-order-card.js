@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.19.1';
+const GLP_ORDER_CARD_VERSION = '1.20.0';
 
 // Menu items younger than this show the NEW badge (config: new_badge_days)
 const NEW_BADGE_DAYS_DEFAULT = 7;
@@ -649,16 +649,61 @@ class GlpOrderCard extends HTMLElement {
     if (config.glp_token) this._token = String(config.glp_token);
   }
 
-  // Machine colour theme (#62): resolves this card's configured accent theme
-  // to concrete {a,b} hex stops, or null if nothing valid is configured.
-  // Precedence accent_gradient > accent_color > theme preset, mirroring
-  // gaggiuino-local-profiler's resolveTheme() (a custom override wins over a
-  // preset). This is the standalone/no-app-sync fallback — once card-to-app
-  // theme sync exists (a later round) the app's own machines.theme becomes
-  // the primary source and this YAML config the override. Hex values are
+  // GLP-SHARED:app-theme-lookup v1 — reads this card's own machine's
+  // app-stored theme (#701) out of `hass` state, or null when unavailable
+  // (no app-side sync yet, e.g. this card's zero-config/standalone mode).
+  // glp-integration forwards every machine's `theme` verbatim off the app's
+  // GET /api/status `machines[]` (gaggiuino-local-profiler#701): any
+  // `*_machine_status`-suffixed entity carries the WHOLE array (every
+  // machine, not just the default one) as its `machines` attribute, so any
+  // one such entity is enough regardless of which machine this card
+  // instance represents. Matched against `this._config.machine` the same
+  // "name or id" needle way this card's own machine-status-entity matching
+  // works, falling back to the isDefault entry when unconfigured. Kept
+  // byte-identical between glp-card.js and glp-order-card.js.
+  _appMachineTheme() {
+    if (!this._hass) return null;
+    const statusIds = Object.keys(this._hass.states).filter(id => id.endsWith('_machine_status'));
+    let machines = null;
+    for (const id of statusIds) {
+      const list = this._hass.states[id]?.attributes?.machines;
+      if (Array.isArray(list)) { machines = list; break; }
+    }
+    if (!machines) return null;
+    let entry = null;
+    if (this._config?.machine) {
+      const needle = String(this._config.machine).toLowerCase();
+      entry = machines.find(m =>
+        String(m.name || '').toLowerCase() === needle || String(m.id) === needle);
+    }
+    if (!entry) entry = machines.find(m => m.isDefault) || null;
+    const theme = entry?.theme;
+    if (!theme) return null;
+    if (typeof theme.preset === 'string' && Object.prototype.hasOwnProperty.call(THEME_PRESETS, theme.preset)) {
+      return THEME_PRESETS[theme.preset];
+    }
+    // Inline literal regex (not each file's own HEX_COLOR_RE/_validHex) so
+    // this shared block stays byte-identical regardless of what either
+    // file's local hex-validation helper happens to be named.
+    if (/^#[0-9a-fA-F]{6}$/.test(theme.a) && /^#[0-9a-fA-F]{6}$/.test(theme.b)) {
+      return { a: theme.a, b: theme.b };
+    }
+    return null;
+  }
+  // /GLP-SHARED:app-theme-lookup v1
+
+  // Machine colour theme (#62): resolves this card's effective accent theme
+  // to concrete {a,b} hex stops, or null if nothing valid is
+  // configured/synced. The app's own stored theme (#701, _appMachineTheme())
+  // takes precedence over this card's YAML config, matching the precedence
+  // already promised above. YAML precedence among itself: accent_gradient >
+  // accent_color > theme preset, mirroring gaggiuino-local-profiler's
+  // resolveTheme() (a custom override wins over a preset). Hex values are
   // strictly validated (#rrggbb only) since they reach a style attribute/SVG
   // gradient stop.
   _resolveTheme() {
+    const fromApp = this._appMachineTheme();
+    if (fromApp) return fromApp;
     const cfg = this._config;
     if (!cfg) return null;
     if (Array.isArray(cfg.accent_gradient) && cfg.accent_gradient.length === 2) {
