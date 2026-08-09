@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.20.0] – 2026-08-09
+### Added
+- **The card now syncs its accent color to the app's own Settings → Machines theme picker** instead of only its standalone `theme`/`accent_color`/`accent_gradient` YAML config (#74, part of gaggiuino-local-profiler#701). `_resolveTheme()` first looks up this card's own machine's `theme` from `hass` state — `glp-integration` forwards it verbatim off the app's `GET /api/status` `machines[]` array (gaggiuino-local-profiler#701 + glp-integration#128) — and only falls back to the YAML config when the app has no theme set for that machine (e.g. this card's zero-config/standalone mode, or an older app version). Reactive: since `_applyThemeVars()` already re-runs on every `hass` push, changing the theme in the app now updates the card without a dashboard reload. New `GLP-SHARED:app-theme-lookup v1` block, kept byte-identical with glp-card.js. Closes #74
+
 ## [1.19.1] – 2026-08-04
 ### Changed
 - **CI now audits the checked-in `package-lock.json` for known vulnerabilities** — `npm audit --audit-level=high` runs in `validate.yml` right after `npm ci`, closing a gap where `dependency-review-action` only checked PR diffs, not the existing tree. Closes #71
