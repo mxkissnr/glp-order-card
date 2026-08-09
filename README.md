@@ -106,17 +106,16 @@ accent_gradient: ["#dc4a1f", "#f5a623"]
 The 8 preset keys: `amber-americano`, `ruby-ristretto`, `copper-cortado`, `twilight-turkish`,
 `marbled-macchiato`, `ember-espresso`, `mulberry-mocha`, `frosty-flat-white`.
 
-**This is a standalone/YAML-only fallback.** The GLP app itself stores a colour theme per
-machine (machine settings → colour picker) that the app's own UI already uses. The app and
-this card don't sync themes yet — that's planned for a later round, at which point the app's
-stored `machines.theme` becomes the primary source and these YAML options become the override
-for cases where you want this card to show a different (or no) theme than the app does. Until
-then, set `theme`/`accent_color`/`accent_gradient` here directly to theme this card.
+**The theme syncs automatically from the app.** The GLP app stores a colour theme per machine
+(Settings → Machines picker); this card reads it live and applies it without any YAML config.
+The `theme`/`accent_color`/`accent_gradient` options above are a manual override/fallback —
+set them to pin a different (or no) theme for this card regardless of the app, or for
+standalone setups with no app-side theme configured.
 
 ## How it works
 
 1. The card loads the drink menu from the GLP app (`GET /api/orders/menu`)
-2. For drinks backed by the coffee library, bean variants come from `GET /api/orders/active-beans` — only beans actually still in stock are offered, and selecting a bean shows its description (taste notes, origin with flag + localized country name, variety, processing) so the customer knows what characterizes the coffee
+2. For drinks backed by the coffee library, bean variants come from `GET /api/orders/active-beans` — only beans actually still in stock are offered, grouped into Speciality/Normal categories, and selecting a bean shows its description (taste notes, origin — including multi-origin blends shown as linked countries — variety, processing) so the customer knows what characterizes the coffee
 3. The customer selects a drink, optionally adds a note, and presses the order button
 4. The order is submitted with the logged-in HA user's name as customer identifier
 5. The card polls the order status every 10 seconds and updates automatically
