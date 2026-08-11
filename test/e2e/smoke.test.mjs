@@ -3,11 +3,13 @@
 // to render the real glp-order-card.js in a headless Chromium tab — not a
 // vm sandbox — so it can exercise real DOM events and timing.
 //
-// Covers the one thing pure vm-sandboxed unit tests structurally cannot:
+// Covers two things pure vm-sandboxed unit tests structurally cannot: (1)
 // the optimistic-UI guard (_clickBlocked/_pendingRender, set hass()) that
 // protects an in-progress user selection from being wiped out by a
-// concurrently-arriving `hass` update. Run via `npm test` (node --test
-// auto-discovers test/**/*.test.mjs).
+// concurrently-arriving `hass` update, and (2) that a switch entity going
+// 'unavailable' (_machineOff(), glp-order-card.js) actually renders the
+// defined machine-off state end-to-end rather than throwing. Run via
+// `npm test` (node --test auto-discovers test/**/*.test.mjs).
 'use strict';
 
 import test from 'node:test';
@@ -15,7 +17,8 @@ import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { startServer, mockApi } from '../../scripts/e2e-harness.mjs';
 
-const HARNESS_HTML = `<!doctype html>
+function harnessHtml(switchState = 'on') {
+  return `<!doctype html>
 <html><head><meta charset="utf-8"></head>
 <body>
 <script src="/glp-order-card.js"></script>
@@ -27,7 +30,7 @@ const HARNESS_HTML = `<!doctype html>
     switch_entity: 'switch.espresso_plug',
   });
   el.hass = {
-    states: { 'switch.espresso_plug': { state: 'on', attributes: {} } },
+    states: { 'switch.espresso_plug': { state: '${switchState}', attributes: {} } },
     user: { id: 'demo-user', name: 'Max' },
     callService: () => {},
   };
@@ -35,6 +38,9 @@ const HARNESS_HTML = `<!doctype html>
   window.__card = el;
 </script>
 </body></html>`;
+}
+
+const HARNESS_HTML = harnessHtml('on');
 
 const MENU = [{ name: 'Flat White', variants: ['Single', 'Doppio'] }];
 
@@ -142,6 +148,31 @@ test('a concurrent hass update does not reset an in-progress variant selection',
     assert.equal(state.btnDisabled, false);
   } finally {
     await tearDown(ctx);
+  }
+});
+
+test('switch entity going unavailable shows the machine-off state without throwing', async () => {
+  const server = await startServer(harnessHtml('unavailable'));
+  const { port } = server.address();
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  const pageErrors = [];
+  page.on('pageerror', err => pageErrors.push(err));
+  try {
+    await mockApi(page, { menu: MENU });
+    await page.goto(`http://127.0.0.1:${port}/__harness.html`);
+    await page.waitForFunction(() => {
+      const el = document.querySelector('glp-order-card');
+      return !!el?.shadowRoot?.querySelector('.machine-off');
+    }, { timeout: 10000 });
+
+    const bodyText = await page.evaluate(() =>
+      document.querySelector('glp-order-card').shadowRoot.querySelector('.machine-off').textContent);
+    assert.match(bodyText, /\S/, 'machine-off state renders a non-empty message, not a blank card');
+    assert.deepEqual(pageErrors, [], 'an unavailable switch entity must not throw during render');
+  } finally {
+    await browser.close();
+    server.close();
   }
 });
 /* eslint-enable no-undef */
