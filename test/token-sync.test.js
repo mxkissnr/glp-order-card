@@ -61,15 +61,16 @@ const BLOCKS = [
 // companion PR only. Every entry MUST carry an issue reference — an entry
 // without one is a bug, and the file refuses to load if it finds one (see
 // the validation loop below). The list MUST be emptied immediately once the
-// named companion PR(s) merge — see #85, which tracks doing exactly that.
+// named companion PR(s) merge (#85 tracked this repo's post-#84 cleanup).
 // A non-empty TRANSITIONAL outside of an active cross-repo merge window
 // means the guard is silently checking less than it claims to, exactly the
 // failure mode #83 was filed to fix in the first place.
-const TRANSITIONAL = {
-  'GLP-SHARED:theme-presets v1': { issue: '#83', reason: 'companion PR mxkissnr/glp-lovelace-card#114 rewords this marker there; not on glp-lovelace-card main yet' },
-  'GLP-SHARED:machine-icon v1':  { issue: '#83', reason: 'companion PR mxkissnr/glp-lovelace-card#114 rewords this marker there; not on glp-lovelace-card main yet' },
-  'GLP-SHARED:contrast v1':      { issue: '#83', reason: 'companion PR mxkissnr/glp-lovelace-card#114 rewords this marker there; not on glp-lovelace-card main yet' },
-};
+//
+// Normal state: EMPTY. Populate it only while a companion PR that changes a
+// GLP-SHARED block is open on the neighbor repo, and empty it again in the
+// same round that companion PR merges — see #85 for the shape that cleanup
+// PR takes.
+const TRANSITIONAL = {};
 
 for (const [name, entry] of Object.entries(TRANSITIONAL)) {
   if (!entry || !entry.issue) {
