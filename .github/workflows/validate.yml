@@ -32,6 +32,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      - name: Fetch glp-card.js for shared-block sync test (#83)
+        # Only the raw file is needed (byte comparison of marked blocks) --
+        # no full checkout, so it can live outside github.workspace where
+        # node --test's default recursive discovery would otherwise pick up
+        # glp-lovelace-card's own test suite.
+        run: curl -fsSL -o "${{ runner.temp }}/glp-card.js" https://raw.githubusercontent.com/mxkissnr/glp-lovelace-card/main/glp-card.js
+
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
@@ -52,6 +59,8 @@ jobs:
 
       - name: Run tests
         run: npm run test:coverage
+        env:
+          GLP_LOVELACE_CARD_PATH: ${{ runner.temp }}/glp-card.js
 
       - name: Build check (syntax)
         run: npm run build

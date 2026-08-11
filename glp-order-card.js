@@ -4,8 +4,10 @@ const GLP_ORDER_CARD_VERSION = '1.20.0';
 const NEW_BADGE_DAYS_DEFAULT = 7;
 
 function _esc(s) {
+  // GLP-SHARED:esc v1 — body kept byte-identical with glp-order-card.js's _esc()
   if (s == null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  // /GLP-SHARED:esc v1
 }
 
 // Origin: since GLP app 1.96.0 an ISO 3166-1 alpha-2 code — render flag emoji
@@ -28,19 +30,26 @@ function _originHtml(origins, lang) {
 }
 
 function _safeUrl(url) {
+  // GLP-SHARED:safeUrl v1 — body kept byte-identical with glp-order-card.js's
+  // _safeUrl() (#74 — that copy had drifted to returning the raw input,
+  // losing this reasoning; re-sync it from here)
   if (!url) return null;
   // Returns u.href (the normalized/re-serialized URL), not the raw input —
   // the raw string could still contain quote/angle-bracket characters that
   // break out of an href="..." attribute even though the protocol is fine.
   try { const u = new URL(url); return (u.protocol==='http:'||u.protocol==='https:') ? u.href : null; }
   catch { return null; }
+  // /GLP-SHARED:safeUrl v1
 }
 
-// Machine colour theme presets (#62). Mirrors gaggiuino-local-profiler's
-// lib/machines/theme-presets.js THEME_PRESETS (app #594/PR #595) — same key
-// names and hex pairs, kept in sync by hand since this card has no shared
-// module with the app. A flat-colour preset repeats the same hex in both
-// stops. Consumed by setConfig()'s `theme` option via _resolveTheme().
+// GLP-SHARED:theme-presets v1 — the 8 approved per-machine colour theme
+// presets (mxkissnr/glp-lovelace-card#87 / mxkissnr/glp-order-card#62),
+// kept byte-identical (key -> {a,b} hex pair) with gaggiuino-local-profiler's
+// lib/machines/theme-presets.js and with glp-order-card.js's copy — same
+// contract as machines.theme, see mxkissnr/gaggiuino-local-profiler#595.
+// Neither card has a theme-picker UI (YAML-config-only, see the `theme`
+// setConfig() key), so unlike the app's copy there are no i18n name/hint
+// labels here, just the hex values.
 const THEME_PRESETS = {
   'amber-americano':   { a: '#f59e0b', b: '#f59e0b' },
   'ruby-ristretto':    { a: '#7f1d1d', b: '#7f1d1d' },
@@ -51,6 +60,7 @@ const THEME_PRESETS = {
   'mulberry-mocha':    { a: '#5b21b6', b: '#db2777' },
   'frosty-flat-white': { a: '#0f766e', b: '#38bdf8' },
 };
+// /GLP-SHARED:theme-presets v1
 
 // Strict #rrggbb-only validation for any theme colour reaching a style
 // attribute/SVG gradient stop. YAML config is operator-controlled, not
@@ -61,72 +71,85 @@ function _validHex(s) {
   return typeof s === 'string' && /^#[0-9a-fA-F]{6}$/.test(s);
 }
 
-/* Detailed Gaggia Classic machine icon (#62), 3/4 view. Approved reference
-   geometry from the GLP Theme Lab mockup (Max, 2026-08-02) — ported
-   verbatim, not redesigned. Renders in this card's own
-   --glp-accent-start/--glp-accent-end tokens (the mockup's --acc-a/--acc-b),
-   so it automatically follows whatever theme _applyThemeVars() resolved for
-   this card instance — no separate colour plumbing needed. `id` must be
-   unique per rendered instance of this icon (a dashboard can show more than
-   one of this card) — see _machineGlyphHtml(). */
+// GLP-SHARED:machine-icon v1 — approved detailed Gaggia Classic icon
+// geometry (mxkissnr/glp-lovelace-card#87 / mxkissnr/glp-order-card#62),
+// ported faithfully from the Theme Lab mockup Max approved (see
+// ICON-AND-THEMES-SPEC.js in the glp-project workspace) and kept in sync
+// with glp-order-card.js's copy. `id` is a per-render-instance-unique
+// gradient id (this card can appear more than once on one dashboard — each
+// file's constructor derives its own id under its own name) coloured via
+// --glp-accent-start/-end (the mockup's --acc-a/--acc-b, renamed to this
+// card's own token names); a second, fixed `${id}-steel` gradient colours
+// the drip-tray mesh in silver, independent of the accent theme. `mini`
+// drops fine detail (portafilter spout, steam wand tip, button
+// highlights/LEDs, drip-tray mesh holes) for small render sizes, per the
+// mockup's own MACHINE_BODY(id, mini).
 const MACHINE_BODY = (id, mini) => `
-      <path d="M72.2 2.3 L100 11 L100 130 L88 153 L72.2 153 Z" fill="url(#${id})"/>
-      <path d="M72.2 2.3 L100 11 L100 130 L88 153 L72.2 153 Z" fill="#000" opacity=".26"/>
-      <path d="M93.2 8.6 L100 11 L100 130 L90 149 L93.2 142 Z" fill="#fff" opacity=".13"/>
+    <!-- Seitenwand rechts inkl. Kantenlicht, volle Hoehe -->
+    <path d="M72.2 2.3 L100 11 L100 130 L88 153 L72.2 153 Z" fill="url(#${id})"/>
+    <path d="M72.2 2.3 L100 11 L100 130 L88 153 L72.2 153 Z" fill="#000" opacity=".26"/>
+    <path d="M93.2 8.6 L100 11 L100 130 L90 149 L93.2 142 Z" fill="#fff" opacity=".13"/>
 
-      <path d="M13 2.4 L72.2 2.3 L72.2 71.9 L10.2 71.9 L10.2 5.2 A2.8 2.8 0 0 1 13 2.4 Z" fill="url(#${id})"/>
-      <path d="M72.2 3 L72.2 71" stroke="#fff" opacity=".22" stroke-width="3"/>
+    <!-- Frontflaeche Korpus -->
+    <path d="M13 2.4 L72.2 2.3 L72.2 71.9 L10.2 71.9 L10.2 5.2 A2.8 2.8 0 0 1 13 2.4 Z" fill="url(#${id})"/>
+    <path d="M72.2 3 L72.2 71" stroke="#fff" opacity=".22" stroke-width="3"/>
 
-      <path d="M20 72 L94 72 L94 122 L24 122 Z" fill="#2b2b31"/>
-      <path d="M20 72 L94 72 L94 77 L20.6 77 Z" fill="#000" opacity=".3"/>
+    <!-- Mittelblock: Korpus kragt links darueber, dort ragt der Siebtraeger ins Freie -->
+    <path d="M20 72 L94 72 L94 122 L24 122 Z" fill="#2b2b31"/>
+    <path d="M20 72 L94 72 L94 77 L20.6 77 Z" fill="#000" opacity=".3"/>
 
-      <rect x="42" y="71.5" width="16" height="10.5" rx="2.2" fill="#b9bec5"/>
-      ${mini ? '' : '<path d="M47 82 L53 82 L52 87.5 L48 87.5 Z" fill="#8f959d"/>'}
-      <path d="M20.5 91 L45 84" stroke="#26262c" stroke-width="6.6" stroke-linecap="round"/>
-      <circle cx="18.6" cy="91.6" r="5.9" fill="#ded8ca" stroke="#26262c" stroke-width="1.2"/>
+    <!-- Bruehgruppe + Siebtraeger (ragt nach links ins Freie) -->
+    <rect x="42" y="71.5" width="16" height="10.5" rx="2.2" fill="#b9bec5"/>
+    ${mini ? '' : '<path d="M47 82 L53 82 L52 87.5 L48 87.5 Z" fill="#8f959d"/>'}
+    <path d="M20.5 91 L45 84" stroke="#26262c" stroke-width="6.6" stroke-linecap="round"/>
+    <circle cx="18.6" cy="91.6" r="5.9" fill="#ded8ca" stroke="#26262c" stroke-width="1.2"/>
 
-      <path d="M84.2 72 C85.2 78 84.6 82 84 88" stroke="#26262c" stroke-width="5" stroke-linecap="round"/>
-      <path d="M84 88 C83.5 101 83 115 83.5 130" stroke="#a3a9b1" stroke-width="2.6" stroke-linecap="round"/>
-      ${mini ? '' : '<path d="M21.5 97 L21.5 130" stroke="#9aa0a8" stroke-width="2" stroke-linecap="round"/>'}
+    <!-- Dampflanze RECHTS: Gummimanschette oben, Chromrohr nach unten -->
+    <path d="M84.2 72 C85.2 78 84.6 82 84 88" stroke="#26262c" stroke-width="5" stroke-linecap="round"/>
+    <path d="M84 88 C83.5 101 83 115 83.5 130" stroke="#a3a9b1" stroke-width="2.6" stroke-linecap="round"/>
+    ${mini ? '' : '<path d="M21.5 97 L21.5 130" stroke="#9aa0a8" stroke-width="2" stroke-linecap="round"/>'}
 
-      <path d="M17 122 L93 122 L80 134 L0 134 Z" fill="#25252b"/>
-      <path d="M20.5 123.4 L88.5 123.4 L77 132.6 L4 132.6 Z" fill="url(#${id}-steel)"/>
-      ${mini ? '' : `
-      <circle cx="28" cy="126" r="1.5" fill="#4a4a52"/>
-      <circle cx="39" cy="126" r="1.5" fill="#4a4a52"/>
-      <circle cx="50" cy="126" r="1.5" fill="#4a4a52"/>
-      <circle cx="61" cy="126" r="1.5" fill="#4a4a52"/>
-      <circle cx="72" cy="126" r="1.5" fill="#4a4a52"/>
-      <circle cx="21" cy="130.4" r="1.5" fill="#4a4a52"/>
-      <circle cx="32" cy="130.4" r="1.5" fill="#4a4a52"/>
-      <circle cx="43" cy="130.4" r="1.5" fill="#4a4a52"/>
-      <circle cx="54" cy="130.4" r="1.5" fill="#4a4a52"/>
-      <circle cx="65" cy="130.4" r="1.5" fill="#4a4a52"/>`}
+    <!-- Tropfschale: silbernes Lochblech in dunklem Rahmen, breiter als der Korpus -->
+    <path d="M17 122 L93 122 L80 134 L0 134 Z" fill="#25252b"/>
+    <path d="M20.5 123.4 L88.5 123.4 L77 132.6 L4 132.6 Z" fill="url(#${id}-steel)"/>
+    ${mini ? '' : `
+    <circle cx="28" cy="126" r="1.5" fill="#4a4a52"/>
+    <circle cx="39" cy="126" r="1.5" fill="#4a4a52"/>
+    <circle cx="50" cy="126" r="1.5" fill="#4a4a52"/>
+    <circle cx="61" cy="126" r="1.5" fill="#4a4a52"/>
+    <circle cx="72" cy="126" r="1.5" fill="#4a4a52"/>
+    <circle cx="21" cy="130.4" r="1.5" fill="#4a4a52"/>
+    <circle cx="32" cy="130.4" r="1.5" fill="#4a4a52"/>
+    <circle cx="43" cy="130.4" r="1.5" fill="#4a4a52"/>
+    <circle cx="54" cy="130.4" r="1.5" fill="#4a4a52"/>
+    <circle cx="65" cy="130.4" r="1.5" fill="#4a4a52"/>`}
 
-      <path d="M0 134 L80 134 L84 155 L0 155 Z" fill="#2b2b31"/>
-      <path d="M0 134 L80 134 L80.8 138 L0 138 Z" fill="#fff" opacity=".07"/>
+    <!-- Sockelfront: senkrecht, rechte Kante trifft die Seitenwand -->
+    <path d="M0 134 L80 134 L84 155 L0 155 Z" fill="#2b2b31"/>
+    <path d="M0 134 L80 134 L80.8 138 L0 138 Z" fill="#fff" opacity=".07"/>
 
-      <rect x="4.5" y="155" width="7.5" height="4.4" rx="1.5" fill="#26262c"/>
-      <rect x="66" y="155" width="7.5" height="4.4" rx="1.5" fill="#26262c"/>
+    <!-- Fuesse -->
+    <rect x="4.5" y="155" width="7.5" height="4.4" rx="1.5" fill="#26262c"/>
+    <rect x="66" y="155" width="7.5" height="4.4" rx="1.5" fill="#26262c"/>
 
-      <rect x="20.5" y="13.6" width="9" height="14.8" rx="2.1" fill="#26262c"/>
-      <rect x="33" y="13.6" width="9" height="14.8" rx="2.1" fill="#26262c"/>
-      <rect x="45.5" y="13.6" width="9" height="14.8" rx="2.1" fill="#26262c"/>
-      ${mini ? '' : `
-      <rect x="21.6" y="14.9" width="6.8" height="5.4" rx="1.4" fill="#fff" opacity=".13"/>
-      <rect x="34.1" y="14.9" width="6.8" height="5.4" rx="1.4" fill="#fff" opacity=".13"/>
-      <rect x="46.6" y="14.9" width="6.8" height="5.4" rx="1.4" fill="#fff" opacity=".13"/>
-      <rect x="23.7" y="31.8" width="2.6" height="2.2" rx=".8" fill="#d9422e"/>
-      <rect x="36.2" y="31.8" width="2.6" height="2.2" rx=".8" fill="#d9422e"/>
-      <rect x="48.7" y="31.8" width="2.6" height="2.2" rx=".8" fill="#d9422e"/>`}
+    <!-- Bedienfeld: 3 Wipptasten -->
+    <rect x="20.5" y="13.6" width="9" height="14.8" rx="2.1" fill="#26262c"/>
+    <rect x="33" y="13.6" width="9" height="14.8" rx="2.1" fill="#26262c"/>
+    <rect x="45.5" y="13.6" width="9" height="14.8" rx="2.1" fill="#26262c"/>
+    ${mini ? '' : `
+    <rect x="21.6" y="14.9" width="6.8" height="5.4" rx="1.4" fill="#fff" opacity=".13"/>
+    <rect x="34.1" y="14.9" width="6.8" height="5.4" rx="1.4" fill="#fff" opacity=".13"/>
+    <rect x="46.6" y="14.9" width="6.8" height="5.4" rx="1.4" fill="#fff" opacity=".13"/>
+    <rect x="23.7" y="31.8" width="2.6" height="2.2" rx=".8" fill="#d9422e"/>
+    <rect x="36.2" y="31.8" width="2.6" height="2.2" rx=".8" fill="#d9422e"/>
+    <rect x="48.7" y="31.8" width="2.6" height="2.2" rx=".8" fill="#d9422e"/>`}
 
-      <rect x="74" y="23.4" width="9" height="8" fill="#26262c"/>
-      <rect x="80.7" y="20.5" width="17" height="13.6" rx="6.8" fill="#212126"/>
-      <ellipse cx="82.6" cy="27.3" rx="2.4" ry="6.8" fill="#3b3b43"/>
-      ${mini ? '' : '<rect x="81.4" y="23.4" width="1.7" height="7.8" rx=".85" fill="#fff" opacity=".2"/>'}`;
+    <!-- Dampfknopf: liegender Zylinder auf der Seitenwand -->
+    <rect x="74" y="23.4" width="9" height="8" fill="#26262c"/>
+    <rect x="80.7" y="20.5" width="17" height="13.6" rx="6.8" fill="#212126"/>
+    <ellipse cx="82.6" cy="27.3" rx="2.4" ry="6.8" fill="#3b3b43"/>
+    ${mini ? '' : '<rect x="81.4" y="23.4" width="1.7" height="7.8" rx=".85" fill="#fff" opacity=".2"/>'}`;
 
-// MINI variant only — this card only ever shows the machine icon as a small
-// header/status-line badge, never a full detail view.
 const MACHINE_ICON_MINI = (id) => `
     <svg viewBox="0 0 100 162" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -141,6 +164,7 @@ const MACHINE_ICON_MINI = (id) => `
       </defs>
       ${MACHINE_BODY(id, true)}
     </svg>`;
+// /GLP-SHARED:machine-icon v1
 
 // Per-instance-unique suffix for this card's machine-icon gradient ids — a
 // dashboard can render more than one glp-order-card, and SVG gradient ids
@@ -764,11 +788,17 @@ class GlpOrderCard extends HTMLElement {
     if (!this._hass) return null;
     const candidates = Object.keys(this._hass.states).filter(id => id.endsWith('_machine_status'));
     if (this._config?.machine) {
+      // GLP-SHARED:machine-match v1 — needle/needleSlug + find() predicate
+      // kept byte-identical with glp-order-card.js's
+      // _findMachineStatusEntity(); what each side does with `matched`
+      // afterward differs (a prefix here vs the raw entity id there), so
+      // only the predicate itself is shared.
       const needle = String(this._config.machine).toLowerCase();
       const needleSlug = needle.replace(/\s+/g, '_');
       const matched = candidates.find(id =>
         this._hass.states[id]?.attributes?.friendly_name?.toLowerCase().includes(needle) ||
         id.toLowerCase().includes(needleSlug));
+      // /GLP-SHARED:machine-match v1
       if (matched) return matched;
     }
     const found = candidates.find(id =>
@@ -923,11 +953,12 @@ class GlpOrderCard extends HTMLElement {
     return s?.state === 'off' || s?.state === 'unavailable';
   }
 
+  /* GLP-SHARED:contrast v1 — kept byte-identical with glp-order-card.js's
+     _luminanceOf()/_applySemanticColorContrast() */
   // Resolves the relative luminance of a CSS color string by normalizing it
   // through a scratch element's computed style (handles hex/rgb/named/etc —
   // whatever the real cascade actually resolved a custom property to).
   // Returns null if it can't be determined (no DOM, unset value, ...).
-  // Ported from glp-card.js verbatim.
   _luminanceOf(cssColor) {
     if (!cssColor) return null;
     let rgb;
@@ -952,17 +983,14 @@ class GlpOrderCard extends HTMLElement {
   // color scheme can mismatch the actual active HA theme (dark system +
   // light HA theme is common), and this card has no data-theme attribute to
   // key off instead. --glp-ok/--glp-warn/--glp-err key off --glp-bg's
-  // luminance (this part is still byte-identical with glp-card.js);
-  // --glp-accent-text keys off --glp-accent-start/--glp-accent-end's
-  // luminance separately (theme darkness and accent darkness are orthogonal
-  // — see the long comments in the GLP-TOKENS block above for the measured
-  // contrast ratios). This card (unlike glp-card.js) renders text directly
-  // on a full-strength gradient fill (.order-btn), so --glp-accent-text is
-  // picked from the DARKER of the two stops — the worst case the gradient
-  // sweeps across, not just the first stop. Sets the winning values as an
-  // inline style on the host, which always outranks the plain :host
-  // declarations in STYLES regardless of any stylesheet/media-query state.
-  // Called from _render() right after the shadow DOM is rebuilt.
+  // luminance; --glp-accent-text keys off --glp-accent-start/-end's
+  // luminance (the darker of the two, see below) separately (theme darkness
+  // and accent darkness are orthogonal — see the
+  // long comments in the GLP-TOKENS block above for the measured contrast
+  // ratios behind all four). Sets the winning values as an inline style on
+  // the host, which always outranks the plain :host declarations in STYLES
+  // regardless of any stylesheet/media-query state. Called from _render()
+  // right after the shadow DOM (and its :host rules) are rebuilt.
   _applySemanticColorContrast() {
     const bgLuminance = this._luminanceOf(getComputedStyle(this).getPropertyValue('--glp-bg').trim());
     if (bgLuminance != null) {
@@ -973,18 +1001,25 @@ class GlpOrderCard extends HTMLElement {
       this.style.setProperty('--glp-warn', light ? '#a16207' : '#eab308');
       this.style.setProperty('--glp-err',  light ? '#dc2626' : '#ef4444');
     }
+    // mxkissnr/glp-lovelace-card#87 / mxkissnr/glp-order-card#62: when a
+    // per-machine gradient theme is active, --glp-accent-start
+    // and --glp-accent-end differ — pick the DARKER (lower-luminance) stop
+    // as the worst case, since text/icon content can sit anywhere across the
+    // gradient. A flat colour (no theme, or a flat custom/preset) has both
+    // stops equal, so this reduces to the original single-value check.
     const startLuminance = this._luminanceOf(getComputedStyle(this).getPropertyValue('--glp-accent-start').trim());
-    const endLuminance   = this._luminanceOf(getComputedStyle(this).getPropertyValue('--glp-accent-end').trim());
-    const stopLuminances = [startLuminance, endLuminance].filter(v => v != null);
-    if (stopLuminances.length) {
+    const endLuminance    = this._luminanceOf(getComputedStyle(this).getPropertyValue('--glp-accent-end').trim());
+    const accentLuminance = [startLuminance, endLuminance].filter(v => v != null)
+      .reduce((min, v) => (min == null || v < min ? v : min), null);
+    if (accentLuminance != null) {
       // Pure #000/#fff at the same 0.179 split is a mathematical guarantee
       // of >=4.58:1 against ANY accent color (both text colors measure
       // exactly that at the crossover luminance, and only gain contrast
       // moving away from it) — no need to check specific theme values here.
-      const worstLuminance = Math.min(...stopLuminances);
-      this.style.setProperty('--glp-accent-text', worstLuminance > 0.179 ? '#000' : '#fff');
+      this.style.setProperty('--glp-accent-text', accentLuminance > 0.179 ? '#000' : '#fff');
     }
   }
+  /* /GLP-SHARED:contrast v1 */
 
   _render() {
     if (!this._config) return;
