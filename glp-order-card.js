@@ -527,7 +527,13 @@ const STYLES = `
     border-color: var(--glp-aline);
     background: color-mix(in srgb, var(--glp-accent) 12%, transparent);
   }
-  .menu-item-icon { font-size: var(--glp-fs-5); margin-bottom: var(--glp-sp-1); line-height: 1; color: var(--oc-sub); }
+  /* The drink icon is the tile's primary recognition cue — it is what the eye
+     lands on before the name. It carries that weight at the top of the scale
+     and in text colour, NOT muted: a 1.8-weight stroke drawing at label colour
+     reads far lighter than the saturated emoji it replaced, and a tile whose
+     icon recedes into the background is a step backwards from what was there
+     before, however much cleaner it is in isolation. */
+  .menu-item-icon { font-size: var(--glp-fs-6); margin-bottom: var(--glp-sp-1); line-height: 1; color: var(--oc-text); }
   .menu-item.selected .menu-item-icon { color: var(--glp-accent); }
   .menu-item-name  { font-size: var(--glp-fs-1); font-weight: 500; color: var(--oc-sub); }
   .menu-item.selected .menu-item-name { color: var(--oc-text); }

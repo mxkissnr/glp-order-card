@@ -107,11 +107,18 @@ ${THEME_VARS}  }
 // ── Demo data ──────────────────────────────────────────────────────────
 const now = Date.now();
 
+// #90: entries carry the `id` the app's DEFAULT_MENU actually assigns them.
+// Without it this fixture silently exercised only the custom-entry fallback
+// path (ICONS.of(undefined) -> ''), so the screenshot showed stored emoji for
+// every tile and documented the opposite of what the card does out of the box.
+// 'Filterkaffee' deliberately keeps no id and a stored emoji: it stands for a
+// user-created entry, whose character is a persisted data field the card must
+// keep rendering. Both paths are visible in one image on purpose.
 const MENU = [
-  { name: 'Espresso',        emoji: '☕', trending: true, createdAt: now - 90 * 86400000 },
-  { name: 'Cappuccino',      emoji: '🥛', createdAt: now - 3 * 86400000 }, // < 7d -> NEW badge
-  { name: 'Flat White',      emoji: '☁️', variants: ['Single', 'Doppio'], createdAt: now - 60 * 86400000 },
-  { name: 'Latte Macchiato', emoji: '🍮', createdAt: now - 120 * 86400000 },
+  { id: 'espresso',   name: 'Espresso',        emoji: '☕', trending: true, createdAt: now - 90 * 86400000 },
+  { id: 'cappuccino', name: 'Cappuccino',      emoji: '🥛', createdAt: now - 3 * 86400000 }, // < 7d -> NEW badge
+  { id: 'flat_white', name: 'Flat White',      emoji: '☁️', variants: ['Single', 'Doppio'], createdAt: now - 60 * 86400000 },
+  { id: 'latte',      name: 'Latte Macchiato', emoji: '🍮', createdAt: now - 120 * 86400000 },
   { name: 'Filterkaffee',    emoji: '🫖', useBeans: true, createdAt: now - 45 * 86400000 },
 ];
 
