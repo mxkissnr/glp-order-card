@@ -21,10 +21,17 @@ function _originHtml(origins, lang) {
     const raw = o?.code;
     if (typeof raw !== 'string' || !/^[A-Z]{2}$/.test(raw.trim())) return _esc(raw);
     const code = raw.trim();
-    const flag = String.fromCodePoint(...[...code].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+    // #90: the regional-indicator flag that used to prefix this is gone. It
+    // was built at runtime from the country code, so it never showed up in a
+    // source-level emoji grep — but it rendered in the OS font (a completely
+    // different visual language from every other icon in the card), it is
+    // absent or a plain 2-letter box on Windows, and it is politically
+    // loaded for several coffee-growing regions in a way a flat country name
+    // is not. Nothing is lost: the resolved country name was always rendered
+    // immediately after it and still is.
     let name = code;
     try { name = new Intl.DisplayNames([lang || 'en'], { type: 'region' }).of(code) || code; } catch { /* unsupported/invalid region code, keep raw code fallback */ }
-    const label = `${flag} ${_esc(name)}`;
+    const label = _esc(name);
     return o.percent != null ? `${label} ${_esc(o.percent)}%` : label;
   }).join(' + ');
 }
@@ -668,6 +675,7 @@ const STRINGS = {
     bean_process: 'Aufbereitung',
     almost_ready: 'Gleich fertig!',
     note_ph: 'Notiz (optional) …',
+    trending_title: 'Beliebt',
     pending: (item) => `${item} — wartet auf Bestätigung`,
     queue_pos: (pos, eta) => `Pos. ${pos} in der Warteschlange · ~${eta} Min`,
     accepted: (item, min) => `${item} — fertig in ~${min} Min`,
@@ -694,6 +702,7 @@ const STRINGS = {
     bean_process: 'Process',
     almost_ready: 'Almost ready!',
     note_ph: 'Note (optional) …',
+    trending_title: 'Trending',
     pending: (item) => `${item} — waiting for confirmation`,
     queue_pos: (pos, eta) => `Position ${pos} in queue · ~${eta} min`,
     accepted: (item, min) => `${item} — ready in ~${min} min`,
@@ -720,6 +729,7 @@ const STRINGS = {
     bean_process: 'Lavorazione',
     almost_ready: 'Quasi pronto!',
     note_ph: 'Nota (opzionale) …',
+    trending_title: 'Di tendenza',
     pending: (item) => `${item} — in attesa di conferma`,
     queue_pos: (pos, eta) => `Posizione ${pos} in coda · ~${eta} min`,
     accepted: (item, min) => `${item} — pronto tra ~${min} min`,
@@ -746,6 +756,7 @@ const STRINGS = {
     bean_process: 'Traitement',
     almost_ready: 'Presque prêt !',
     note_ph: 'Note (facultatif) …',
+    trending_title: 'Tendances',
     pending: (item) => `${item} — en attente de confirmation`,
     queue_pos: (pos, eta) => `Position ${pos} dans la file · ~${eta} min`,
     accepted: (item, min) => `${item} — prêt dans ~${min} min`,
@@ -772,6 +783,7 @@ const STRINGS = {
     bean_process: 'Proceso',
     almost_ready: '¡Casi listo!',
     note_ph: 'Nota (opcional) …',
+    trending_title: 'Tendencia',
     pending: (item) => `${item} — esperando confirmación`,
     queue_pos: (pos, eta) => `Posición ${pos} en la cola · ~${eta} min`,
     accepted: (item, min) => `${item} — listo en ~${min} min`,
@@ -798,6 +810,7 @@ const STRINGS = {
     bean_process: 'Verwerking',
     almost_ready: 'Bijna klaar!',
     note_ph: 'Notitie (optioneel) …',
+    trending_title: 'Populair',
     pending: (item) => `${item} — wacht op bevestiging`,
     queue_pos: (pos, eta) => `Positie ${pos} in de wachtrij · ~${eta} min`,
     accepted: (item, min) => `${item} — klaar over ~${min} min`,
@@ -1347,7 +1360,7 @@ class GlpOrderCard extends HTMLElement {
     const regular  = visibleMenu.filter(m => !m.trending);
 
     const trendSection = trending.length ? `
-      <p class="menu-section-title">${ICONS.of('heat')} Trending</p>
+      <p class="menu-section-title">${ICONS.of('heat')} ${_esc(_s('trending_title', lang))}</p>
       <div class="menu-grid">${trending.map(renderItem).join('')}</div>` : '';
     const regularSection = regular.length ? `
       ${trending.length ? `<p class="menu-section-title" style="margin-top:var(--glp-sp-3)">${_s('menu_all', lang)}</p>` : ''}
