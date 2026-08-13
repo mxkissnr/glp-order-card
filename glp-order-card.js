@@ -242,6 +242,20 @@ const ICONS = {
 };
 // /GLP-SHARED:icons v1
 
+// `emoji` on a menu entry is a PERSISTED DATA FIELD, not styling — it's
+// defined app-side in DEFAULT_MENU (gaggiuino-local-profiler lib/constants.js)
+// and writable through POST/PUT api/orders/menu, so it stays exactly as-is,
+// no migration. This only changes how it renders: the six default drinks
+// (espresso/ristretto/lungo/cappuccino/latte/flat_white — the only ids that
+// exist in GLP_ICON_PATHS) get a drawn icon instead; any other id — a
+// user-created entry, whose id is always `m_${Date.now()}` server-side and
+// so can never collide with the six known ones — falls back to that entry's
+// own stored emoji character, escaped the same way any other user-supplied
+// text reaching innerHTML is.
+function _menuIconHtml(item) {
+  return ICONS.of(item?.id) || _esc(item?.emoji);
+}
+
 // Per-instance-unique suffix for this card's machine-icon gradient ids — a
 // dashboard can render more than one glp-order-card, and SVG gradient ids
 // are global to the document once in the DOM, so a fixed id would let one
@@ -643,7 +657,7 @@ const STRINGS = {
     title: 'Bestellen',
     off:    'Maschine aus — Bestellung nicht möglich',
     paused: 'Bestellungen momentan pausiert',
-    order_btn: (item) => `☕ ${item} bestellen`,
+    order_btn: (item) => `${item} bestellen`,
     order_btn_select: 'Getränk auswählen',
     variant_select: 'Variante wählen',
     variant_label: 'Variante',
@@ -652,13 +666,13 @@ const STRINGS = {
     bean_origin: 'Herkunft',
     bean_variety: 'Varietät',
     bean_process: 'Aufbereitung',
-    almost_ready: '🎉 Gleich fertig!',
+    almost_ready: 'Gleich fertig!',
     note_ph: 'Notiz (optional) …',
-    pending: (item) => `⏳ ${item} — wartet auf Bestätigung`,
+    pending: (item) => `${item} — wartet auf Bestätigung`,
     queue_pos: (pos, eta) => `Pos. ${pos} in der Warteschlange · ~${eta} Min`,
-    accepted: (item, min) => `☕ ${item} — fertig in ~${min} Min`,
-    done: (item) => `✓ ${item} ist fertig!`,
-    declined: (item) => `✕ ${item} wurde abgelehnt`,
+    accepted: (item, min) => `${item} — fertig in ~${min} Min`,
+    done: (item) => `${item} ist fertig!`,
+    declined: (item) => `${item} wurde abgelehnt`,
     decline_reason: (r) => `Grund: ${r}`,
     new_order: '+ Neue Bestellung',
     loading: 'Lade …',
@@ -669,7 +683,7 @@ const STRINGS = {
     title: 'Order',
     off:    'Machine is off — ordering not available',
     paused: 'Orders are currently paused',
-    order_btn: (item) => `☕ Order ${item}`,
+    order_btn: (item) => `Order ${item}`,
     order_btn_select: 'Select a drink',
     variant_select: 'Select variant',
     variant_label: 'Variant',
@@ -678,13 +692,13 @@ const STRINGS = {
     bean_origin: 'Origin',
     bean_variety: 'Variety',
     bean_process: 'Process',
-    almost_ready: '🎉 Almost ready!',
+    almost_ready: 'Almost ready!',
     note_ph: 'Note (optional) …',
-    pending: (item) => `⏳ ${item} — waiting for confirmation`,
+    pending: (item) => `${item} — waiting for confirmation`,
     queue_pos: (pos, eta) => `Position ${pos} in queue · ~${eta} min`,
-    accepted: (item, min) => `☕ ${item} — ready in ~${min} min`,
-    done: (item) => `✓ ${item} is ready!`,
-    declined: (item) => `✕ ${item} was declined`,
+    accepted: (item, min) => `${item} — ready in ~${min} min`,
+    done: (item) => `${item} is ready!`,
+    declined: (item) => `${item} was declined`,
     decline_reason: (r) => `Reason: ${r}`,
     new_order: '+ New Order',
     loading: 'Loading …',
@@ -695,7 +709,7 @@ const STRINGS = {
     title: 'Ordina',
     off:    'Macchina spenta — ordine non disponibile',
     paused: 'Ordini momentaneamente in pausa',
-    order_btn: (item) => `☕ Ordina ${item}`,
+    order_btn: (item) => `Ordina ${item}`,
     order_btn_select: 'Seleziona una bevanda',
     variant_select: 'Seleziona variante',
     variant_label: 'Variante',
@@ -704,13 +718,13 @@ const STRINGS = {
     bean_origin: 'Origine',
     bean_variety: 'Varietà',
     bean_process: 'Lavorazione',
-    almost_ready: '🎉 Quasi pronto!',
+    almost_ready: 'Quasi pronto!',
     note_ph: 'Nota (opzionale) …',
-    pending: (item) => `⏳ ${item} — in attesa di conferma`,
+    pending: (item) => `${item} — in attesa di conferma`,
     queue_pos: (pos, eta) => `Posizione ${pos} in coda · ~${eta} min`,
-    accepted: (item, min) => `☕ ${item} — pronto tra ~${min} min`,
-    done: (item) => `✓ ${item} è pronto!`,
-    declined: (item) => `✕ ${item} è stato rifiutato`,
+    accepted: (item, min) => `${item} — pronto tra ~${min} min`,
+    done: (item) => `${item} è pronto!`,
+    declined: (item) => `${item} è stato rifiutato`,
     decline_reason: (r) => `Motivo: ${r}`,
     new_order: '+ Nuovo ordine',
     loading: 'Caricamento …',
@@ -721,7 +735,7 @@ const STRINGS = {
     title: 'Commander',
     off:    'Machine éteinte — commande impossible',
     paused: 'Commandes actuellement en pause',
-    order_btn: (item) => `☕ Commander ${item}`,
+    order_btn: (item) => `Commander ${item}`,
     order_btn_select: 'Choisir une boisson',
     variant_select: 'Choisir la variante',
     variant_label: 'Variante',
@@ -730,13 +744,13 @@ const STRINGS = {
     bean_origin: 'Origine',
     bean_variety: 'Variété',
     bean_process: 'Traitement',
-    almost_ready: '🎉 Presque prêt !',
+    almost_ready: 'Presque prêt !',
     note_ph: 'Note (facultatif) …',
-    pending: (item) => `⏳ ${item} — en attente de confirmation`,
+    pending: (item) => `${item} — en attente de confirmation`,
     queue_pos: (pos, eta) => `Position ${pos} dans la file · ~${eta} min`,
-    accepted: (item, min) => `☕ ${item} — prêt dans ~${min} min`,
-    done: (item) => `✓ ${item} est prêt !`,
-    declined: (item) => `✕ ${item} a été refusé`,
+    accepted: (item, min) => `${item} — prêt dans ~${min} min`,
+    done: (item) => `${item} est prêt !`,
+    declined: (item) => `${item} a été refusé`,
     decline_reason: (r) => `Raison : ${r}`,
     new_order: '+ Nouvelle commande',
     loading: 'Chargement …',
@@ -747,7 +761,7 @@ const STRINGS = {
     title: 'Pedir',
     off:    'Máquina apagada — no se puede pedir',
     paused: 'Los pedidos están pausados por ahora',
-    order_btn: (item) => `☕ Pedir ${item}`,
+    order_btn: (item) => `Pedir ${item}`,
     order_btn_select: 'Selecciona una bebida',
     variant_select: 'Selecciona variante',
     variant_label: 'Variante',
@@ -756,13 +770,13 @@ const STRINGS = {
     bean_origin: 'Origen',
     bean_variety: 'Variedad',
     bean_process: 'Proceso',
-    almost_ready: '🎉 ¡Casi listo!',
+    almost_ready: '¡Casi listo!',
     note_ph: 'Nota (opcional) …',
-    pending: (item) => `⏳ ${item} — esperando confirmación`,
+    pending: (item) => `${item} — esperando confirmación`,
     queue_pos: (pos, eta) => `Posición ${pos} en la cola · ~${eta} min`,
-    accepted: (item, min) => `☕ ${item} — listo en ~${min} min`,
-    done: (item) => `✓ ¡${item} está listo!`,
-    declined: (item) => `✕ ${item} fue rechazado`,
+    accepted: (item, min) => `${item} — listo en ~${min} min`,
+    done: (item) => `¡${item} está listo!`,
+    declined: (item) => `${item} fue rechazado`,
     decline_reason: (r) => `Motivo: ${r}`,
     new_order: '+ Nuevo pedido',
     loading: 'Cargando …',
@@ -773,7 +787,7 @@ const STRINGS = {
     title: 'Bestellen',
     off:    'Machine uit — bestellen niet mogelijk',
     paused: 'Bestellingen zijn momenteel gepauzeerd',
-    order_btn: (item) => `☕ ${item} bestellen`,
+    order_btn: (item) => `${item} bestellen`,
     order_btn_select: 'Kies een drankje',
     variant_select: 'Variant kiezen',
     variant_label: 'Variant',
@@ -782,13 +796,13 @@ const STRINGS = {
     bean_origin: 'Herkomst',
     bean_variety: 'Variëteit',
     bean_process: 'Verwerking',
-    almost_ready: '🎉 Bijna klaar!',
+    almost_ready: 'Bijna klaar!',
     note_ph: 'Notitie (optioneel) …',
-    pending: (item) => `⏳ ${item} — wacht op bevestiging`,
+    pending: (item) => `${item} — wacht op bevestiging`,
     queue_pos: (pos, eta) => `Positie ${pos} in de wachtrij · ~${eta} min`,
-    accepted: (item, min) => `☕ ${item} — klaar over ~${min} min`,
-    done: (item) => `✓ ${item} is klaar!`,
-    declined: (item) => `✕ ${item} is afgewezen`,
+    accepted: (item, min) => `${item} — klaar over ~${min} min`,
+    done: (item) => `${item} is klaar!`,
+    declined: (item) => `${item} is afgewezen`,
     decline_reason: (r) => `Reden: ${r}`,
     new_order: '+ Nieuwe bestelling',
     loading: 'Laden …',
@@ -1322,9 +1336,9 @@ class GlpOrderCard extends HTMLElement {
     const renderItem = m => {
       const isNew     = m.createdAt && (now - m.createdAt) < newThreshold;
       const newBadge  = isNew     ? `<span class="menu-badge menu-badge-new">NEW</span>` : '';
-      const trendBadge = m.trending ? `<span class="menu-badge menu-badge-trend">🔥</span>` : '';
+      const trendBadge = m.trending ? `<span class="menu-badge menu-badge-trend">${ICONS.of('heat')}</span>` : '';
       return `<div class="menu-item${this._selected === m.name ? ' selected' : ''}" data-item="${_esc(m.name)}">
-        <div class="menu-item-emoji">${_esc(m.emoji)}</div>
+        <div class="menu-item-icon">${_menuIconHtml(m)}</div>
         <div class="menu-item-name">${_esc(m.name)}${trendBadge}${newBadge}</div>
       </div>`;
     };
@@ -1333,10 +1347,10 @@ class GlpOrderCard extends HTMLElement {
     const regular  = visibleMenu.filter(m => !m.trending);
 
     const trendSection = trending.length ? `
-      <p class="menu-section-title">🔥 Trending</p>
+      <p class="menu-section-title">${ICONS.of('heat')} Trending</p>
       <div class="menu-grid">${trending.map(renderItem).join('')}</div>` : '';
     const regularSection = regular.length ? `
-      ${trending.length ? `<p class="menu-section-title" style="margin-top:10px">${_s('menu_all', lang)}</p>` : ''}
+      ${trending.length ? `<p class="menu-section-title" style="margin-top:var(--glp-sp-3)">${_s('menu_all', lang)}</p>` : ''}
       <div class="menu-grid">${regular.map(renderItem).join('')}</div>` : '';
 
     const selectedItem = visibleMenu.find(m => m.name === this._selected);
@@ -1362,7 +1376,7 @@ class GlpOrderCard extends HTMLElement {
         ${variantSection}${beanInfoSection}
         <input class="note-input" id="oc-note" placeholder="${_s('note_ph', lang)}" maxlength="200">
         <button class="order-btn" id="oc-submit" ${!this._selected || this._submitting || needsVariant ? 'disabled' : ''}>
-          ${_esc(btnLabel)}
+          ${itemLabel ? ICONS.of('coffee') + ' ' : ''}${_esc(btnLabel)}
         </button>
       </div>`;
   }
@@ -1447,6 +1461,11 @@ class GlpOrderCard extends HTMLElement {
       ? `<div class="status-line status-machine">${this._machineGlyphHtml('status', 'stat')}${_esc(order.machine)}</div>` : '';
 
     if (order.status === 'pending') {
+      // No icon here (#90): pending's old hourglass glyph (U+23F3) isn't one
+      // of the five drawn icons this redesign ships, and the shared
+      // GLP-SHARED:icons v1 block is a byte-identical contract with
+      // glp-card.js — adding a sixth mid-round would drift the two files
+      // apart. Dropped rather than shoehorned into an icon that doesn't fit.
       const qp = this._queueEta?.positions?.[order.id];
       const queueLine = qp
         ? `<div class="status-line">${_esc(_s('queue_pos', lang, qp.position, qp.suggestedEta))}</div>`
@@ -1460,18 +1479,18 @@ class GlpOrderCard extends HTMLElement {
       const etaDone   = order.acceptedAt + order.eta * 60000;
       const minsLeft  = Math.max(0, Math.ceil((etaDone - Date.now()) / 60000));
       content = `<div class="status-card accepted">
-        <div class="status-item">${_esc(_s('accepted', lang, itemLabel, minsLeft))}</div>
+        <div class="status-item">${ICONS.of('coffee')} ${_esc(_s('accepted', lang, itemLabel, minsLeft))}</div>
         ${machineLine}
-        <div class="status-eta">${minsLeft === 0 ? _s('almost_ready', this._lang) : `~${minsLeft} min`}</div>
+        <div class="status-eta">${minsLeft === 0 ? `${ICONS.of('celebrate')} ${_s('almost_ready', this._lang)}` : `~${minsLeft} min`}</div>
       </div>`;
     } else if (order.status === 'done') {
       const shotHtml = this._renderShotSummary(this._lastShot, lang);
       content = `<div class="status-card done">
-        <div class="status-done-msg">${_esc(_s('done', lang, itemLabel))}</div>
+        <div class="status-done-msg">${ICONS.of('check')} ${_esc(_s('done', lang, itemLabel))}</div>
       </div>${shotHtml}`;
     } else if (order.status === 'declined') {
       content = `<div class="status-card declined">
-        <div class="status-item">${_esc(_s('declined', lang, itemLabel))}</div>
+        <div class="status-item">${ICONS.of('close')} ${_esc(_s('declined', lang, itemLabel))}</div>
         ${order.declineReason ? `<div class="status-decline">${_esc(_s('decline_reason', lang, order.declineReason))}</div>` : ''}
       </div>`;
     }
@@ -1587,7 +1606,7 @@ class GlpOrderCard extends HTMLElement {
       ${showHeadings ? `<p class="menu-section-title">${_s('variant_speciality', lang)}</p>` : ''}
       <div class="variant-grid">${speciality.map(v => this._variantChipHtml(v)).join('')}</div>` : '';
     const normalSection = normal.length ? `
-      ${showHeadings ? `<p class="menu-section-title" style="margin-top:10px">${_s('variant_normal', lang)}</p>` : ''}
+      ${showHeadings ? `<p class="menu-section-title" style="margin-top:var(--glp-sp-3)">${_s('variant_normal', lang)}</p>` : ''}
       <div class="variant-grid">${normal.map(v => this._variantChipHtml(v)).join('')}</div>` : '';
     return specialitySection + normalSection;
   }
@@ -1691,6 +1710,10 @@ class GlpOrderCard extends HTMLElement {
       btn.textContent = _s('variant_select', this._lang);
       btn.disabled = true;
     } else {
+      // textContent, not innerHTML — this is the fast incremental update path
+      // (variant/note interaction), not a full _renderOrderForm() pass, so it
+      // doesn't carry the coffee icon _renderOrderForm() puts in the button on
+      // a full render. Text-only here, same as the other two branches above.
       const itemLabel = this._selectedVariant ? `${this._selected} · ${this._selectedVariant}` : this._selected;
       btn.textContent = _s('order_btn', this._lang, itemLabel);
       btn.disabled = !!this._submitting;
