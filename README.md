@@ -127,7 +127,7 @@ The barista manages orders from the **Bestellungen** tab in the GLP web UI.
 
 ## Languages
 
-Auto-detected from the browser locale. Currently supported: 🇩🇪 DE, 🇬🇧 EN.
+Auto-detected from the browser locale. Currently supported: 🇩🇪 DE, 🇬🇧 EN, 🇮🇹 IT, 🇫🇷 FR, 🇪🇸 ES, 🇳🇱 NL. Any other locale falls back to English.
 
 ---
 

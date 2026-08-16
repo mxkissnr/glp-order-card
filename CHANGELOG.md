@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+## [1.21.0] – 2026-08-16
 ### Fixed
 - **The screenshot fixture never exercised the drink icons at all.** Its menu entries carried no `id`, only `name` and `emoji`, so `ICONS.of(item.id)` always missed and every tile fell through to the stored-emoji path — the documentation screenshot showed the exact opposite of what the card does with a default menu. The fixture now carries the ids the app's `DEFAULT_MENU` actually assigns, and keeps one deliberately id-less entry so both paths stay visible in one image. #90
 
