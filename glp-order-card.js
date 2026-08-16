@@ -1,4 +1,4 @@
-const GLP_ORDER_CARD_VERSION = '1.20.0';
+const GLP_ORDER_CARD_VERSION = '1.21.0';
 
 // Menu items younger than this show the NEW badge (config: new_badge_days)
 const NEW_BADGE_DAYS_DEFAULT = 7;
