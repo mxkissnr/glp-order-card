@@ -277,7 +277,7 @@ const STYLES = `
   /* GLP-TOKENS v1 — shared contract between glp-card.js and glp-order-card.js, keep byte-identical */
   :host {
     --glp-radius:    var(--ha-card-border-radius, 12px);
-    --glp-radius-sm: 8px;
+    --glp-radius-sm: 4px;
     --glp-bg:      var(--ha-card-background, var(--card-background-color, #18181b));
     --glp-surface: var(--secondary-background-color, #27272a);
     --glp-border:  var(--divider-color, #3f3f46);
@@ -395,11 +395,15 @@ const STYLES = `
        cards used to reach for: the border diet removes boxes as a grouping
        device, and it must not come back as hairline micro-typography nobody
        can read.
-       Radii are deliberately NOT part of this ladder. Both cards already
-       resolve every corner through --glp-radius / --glp-radius-sm above, and
-       --glp-radius stays HA-led (var(--ha-card-border-radius)) so a card
-       keeps matching the dashboard it sits on — pinning it to a fixed
-       redesign value would break exactly that. */
+       Radii are deliberately NOT part of this ladder. --glp-radius stays
+       HA-led (var(--ha-card-border-radius)) and is scoped to the outer
+       .card/ha-card shell only, so a card keeps matching the dashboard it
+       sits on — pinning it to a fixed redesign value would break exactly
+       that. Every other corner (buttons, tiles, inputs, status/tag pills)
+       resolves through --glp-radius-sm instead, a fixed 4px (the redesign
+       plan's control radius, glp-project/redesign-2026-08/PLAN.md §2) —
+       controls read visibly flatter than the card shell around them, which
+       is the point: two distinct radii, not one value reused everywhere. */
     --glp-fs-1: 0.8125rem;
     --glp-fs-2: 0.875rem;
     --glp-fs-3: 1rem;
@@ -498,7 +502,7 @@ const STYLES = `
   .machine-off {
     background: color-mix(in srgb, var(--oc-accent) 8%, transparent);
     border-left: 2px solid var(--oc-accent);
-    border-radius: var(--glp-radius); color: var(--oc-accent); font-size: var(--glp-fs-2); font-weight: 600;
+    border-radius: var(--glp-radius-sm); color: var(--oc-accent); font-size: var(--glp-fs-2); font-weight: 600;
     text-align: center; padding: var(--glp-sp-4);
   }
 
@@ -512,7 +516,7 @@ const STYLES = `
   .menu-item {
     background: var(--oc-surface);
     border: 1px solid var(--oc-border);
-    border-radius: var(--glp-radius);
+    border-radius: var(--glp-radius-sm);
     padding: var(--glp-sp-3) var(--glp-sp-2);
     text-align: center;
     cursor: pointer;
@@ -542,7 +546,7 @@ const STYLES = `
   .order-form { display: flex; flex-direction: column; gap: var(--glp-sp-3); margin-bottom: var(--glp-sp-1); }
   .note-input {
     background: var(--oc-surface2); border: 1px solid var(--oc-border);
-    border-radius: var(--glp-radius); color: var(--oc-text); font-family: inherit;
+    border-radius: var(--glp-radius-sm); color: var(--oc-text); font-family: inherit;
     font-size: var(--glp-fs-2); padding: var(--glp-sp-3); outline: none; width: 100%; box-sizing: border-box;
     transition: border-color .18s, background .18s;
   }
@@ -555,7 +559,7 @@ const STYLES = `
      is picked at runtime off the darker of the two gradient stops so button
      text stays readable against any configured theme, see GLP-TOKENS above. */
   .order-btn {
-    width: 100%; padding: var(--glp-sp-4); border: none; border-radius: var(--glp-radius);
+    width: 100%; padding: var(--glp-sp-4); border: none; border-radius: var(--glp-radius-sm);
     font-size: var(--glp-fs-2); font-weight: 800; letter-spacing: .01em; cursor: pointer;
     font-family: inherit; color: var(--glp-accent-text);
     background: linear-gradient(135deg, var(--glp-accent-start), var(--glp-accent-end));
@@ -573,7 +577,7 @@ const STYLES = `
      own theme accent (it's an "in progress" state, not a semantic colour),
      everything else already had a semantic --oc-* token to line up with. */
   .status-card {
-    border-radius: var(--glp-radius); padding: var(--glp-sp-4);
+    border-radius: var(--glp-radius-sm); padding: var(--glp-sp-4);
     display: flex; flex-direction: column; gap: var(--glp-sp-2);
     animation: oc-fade .3s ease-out both;
   }
@@ -592,7 +596,7 @@ const STYLES = `
   .shot-summary {
     margin-top: var(--glp-sp-3);
     background: var(--oc-surface2);
-    border-radius: var(--glp-radius);
+    border-radius: var(--glp-radius-sm);
     padding: var(--glp-sp-3) var(--glp-sp-4);
     display: flex;
     flex-direction: column;
@@ -624,7 +628,7 @@ const STYLES = `
   .menu-section-title { font-size: var(--glp-fs-1); font-weight: 600; color: var(--oc-sub); margin: 0 0 var(--glp-sp-2); display: flex; align-items: center; gap: var(--glp-sp-1); }
   .new-order-btn {
     margin-top: var(--glp-sp-3); width: 100%; background: var(--oc-surface); border: 1px solid var(--oc-border);
-    border-radius: var(--glp-radius); color: var(--oc-sub); font-family: inherit; font-weight: 600;
+    border-radius: var(--glp-radius-sm); color: var(--oc-sub); font-family: inherit; font-weight: 600;
     font-size: var(--glp-fs-1); padding: var(--glp-sp-2) var(--glp-sp-3); cursor: pointer; transition: all .15s;
   }
   .new-order-btn:hover { border-color: color-mix(in srgb, var(--oc-text) 22%, transparent); color: var(--oc-text); background: color-mix(in srgb, var(--oc-text) 7%, transparent); }
@@ -635,7 +639,7 @@ const STYLES = `
   .variant-grid { display: flex; flex-wrap: wrap; gap: var(--glp-sp-2); margin-bottom: var(--glp-sp-1); }
   .variant-chip {
     background: var(--oc-surface); border: 1px solid var(--oc-border);
-    border-radius: 20px; padding: var(--glp-sp-2) var(--glp-sp-4); font-size: var(--glp-fs-1); cursor: pointer;
+    border-radius: var(--glp-radius-sm); padding: var(--glp-sp-2) var(--glp-sp-4); font-size: var(--glp-fs-1); cursor: pointer;
     color: var(--oc-sub); transition: all .15s; user-select: none;
   }
   .variant-chip:hover { border-color: color-mix(in srgb, var(--oc-text) 20%, transparent); color: var(--oc-text); }
