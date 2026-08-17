@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Fixed
+- **GitHub-only CI workflows (CodeQL, dependency review, scorecard) no longer auto-run against the local Gitea mirror.** Gitea Actions picks up `.github/workflows` automatically, so registering the local runner would re-run all of them there too. Each now skips outside `github.com`; the `validate.yml` gate is unaffected and runs on both. glp-order-card#99
 - **Controls still resolved their corner radius through the same HA-led `--glp-radius` as the card shell**, so menu tiles, inputs, buttons and status boxes read as rounded as the dashboard's own card radius instead of the flatter, more instrument-like geometry the redesign plan called for (`glp-project/redesign-2026-08/PLAN.md` §2: `--r-sm 4px` controls vs `--r-lg 10px` container — a two-radius system that #91 never actually applied). `--glp-radius-sm` moves from a fixed 8px to the plan's 4px and now covers every control (`.menu-item`, `.note-input`, `.order-btn`, `.status-card`, `.shot-summary`, `.new-order-btn`, `.machine-off`, `.variant-chip` — the last of which also loses its full 20px pill radius); `--glp-radius` stays HA-led and scoped to `.card` only. GLP-TOKENS v1 kept byte-identical with glp-card.js. glp-order-card#95
 
 ## [1.21.0] – 2026-08-16
