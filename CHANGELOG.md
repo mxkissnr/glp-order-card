@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.21.1] – 2026-08-19
 ### Added
 - **New `scripts/sync-to-integration.sh`** to copy the built `glp-order-card.js` into glp-integration's bundled `www/` folder, mirroring `glp-lovelace-card`'s script of the same name — the Order Card now ships inside glp-integration too, registered automatically as a Lovelace resource. Closes #104
 
