@@ -12,7 +12,12 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 function loadCardHelpers() {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'glp-order-card.js'), 'utf8');
+  let src = fs.readFileSync(path.join(__dirname, '..', 'glp-order-card.js'), 'utf8');
+  // #114: glp-order-card.js is wrapped in an IIFE (see security-helpers.test.js).
+  src = src.replace(
+    "customElements.define('glp-order-card', GlpOrderCard);",
+    "customElements.define('glp-order-card', GlpOrderCard); globalThis._originHtml = _originHtml;"
+  );
 
   class HTMLElement {}
 
@@ -25,6 +30,7 @@ function loadCardHelpers() {
     Intl,
     navigator: { language: 'en-US' },
   };
+  context.globalThis = context;
   vm.createContext(context);
   vm.runInContext(src, context, { filename: path.join(__dirname, '..', 'glp-order-card.js') });
 
