@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+### Added
+- **New `scripts/sync-to-integration.sh`** to copy the built `glp-order-card.js` into glp-integration's bundled `www/` folder, mirroring `glp-lovelace-card`'s script of the same name — the Order Card now ships inside glp-integration too, registered automatically as a Lovelace resource. Closes #104
+
 ### Changed
 - **Switched dependency updates from Dependabot to Renovate** (`renovate.json`), matching the same npm dev-dependency and codeql-action grouping as before, plus automerge for green minor/patch updates (the card has no runtime npm dependencies, only build/lint/test tooling), immediate unscheduled security PRs, weekly lockfile maintenance, and semantic commits matching the existing convention. CI/tooling only, no card behavior change. glp-order-card#106
 
