@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+### Changed
+- Internal: add a job timeout and retry-wrap the CI Playwright Chromium install step (short per-attempt timeout + 3 retries), so a runner-side apt-mirror hiccup self-heals within one CI run instead of hanging indefinitely (happened today, ~50 minutes uncontrolled). CI/tooling only, no card behavior change. glp-order-card#111
+
 ## [1.21.1] – 2026-08-19
 ### Added
 - **New `scripts/sync-to-integration.sh`** to copy the built `glp-order-card.js` into glp-integration's bundled `www/` folder, mirroring `glp-lovelace-card`'s script of the same name — the Order Card now ships inside glp-integration too, registered automatically as a Lovelace resource. Closes #104
