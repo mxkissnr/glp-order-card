@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+## [1.21.2] – 2026-08-20
 ### Fixed
 - **The Shot Card (glp-lovelace-card) failed to register at all when bundled alongside this card** (`glp-integration` v1.31.0+), showing "Custom element doesn't exist: glp-card" in the card picker. Both cards are loaded as classic `<script src>` tags in the same HA frontend document and declared identical top-level `const` names (`STRINGS`, `THEME_PRESETS`, `MACHINE_BODY`, `MACHINE_ICON_MINI`, `GLP_ICON_PATHS`, `ICONS`, `STYLES`) — classic scripts share that lexical scope, so whichever card's script loaded second threw `SyntaxError: Identifier already declared` and aborted before `customElements.define()` ran. `glp-order-card.js` is now wrapped in an IIFE so its top-level declarations no longer leak into the shared document scope; same fix applied in glp-lovelace-card (#141). #114
 
