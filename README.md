@@ -10,7 +10,7 @@
     <img src="https://img.shields.io/github/actions/workflow/status/mxkissnr/glp-order-card/validate.yml?branch=main&label=Validate&style=flat-square" alt="Validate"/>
   </a>
   <img src="https://img.shields.io/badge/Home%20Assistant-Lovelace%20Card-41bdf5?logo=home-assistant&style=flat-square" alt="HA Lovelace"/>
-  <img src="https://img.shields.io/badge/HACS-Custom-orange?style=flat-square" alt="HACS Custom"/>
+  <img src="https://img.shields.io/badge/Bundled%20in-GLP%20Integration%20(HACS)-orange?style=flat-square" alt="Bundled in GLP Integration (HACS)"/>
   <img src="https://img.shields.io/badge/Built%20with-Claude%20by%20Anthropic-D97706?style=flat-square" alt="Built with Claude"/>
   <img src="https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square" alt="License GPL-3.0"/>
 </p>
@@ -50,11 +50,11 @@ Regenerated on demand via `node scripts/screenshot.mjs` (demo data, no real back
 - [Gaggiuino Local Profiler](https://github.com/mxkissnr/gaggiuino-local-profiler) app v1.45.0 or later, installed and running
 - The barista configures the menu in the new **Bestellungen** tab in the GLP web UI
 
-## Installation via HACS
+## Installation
 
-1. In HACS → Frontend → ⋮ → Custom repositories → add `mxkissnr/glp-order-card` (category: **Lovelace**)
-2. Download the card
-3. Add a manual resource or let HACS handle it
+> **This card is no longer a separate HACS listing.** Per HACS policy for a card with a hard dependency on its paired integration, GLP Order Card now ships bundled inside [GLP Integration](https://github.com/mxkissnr/glp-integration) and is registered automatically as a dashboard resource when you install/update that integration via HACS — no separate card download or manual resource config needed. Just add a `type: custom:glp-order-card` card to your dashboard after installing GLP Integration.
+>
+> This repository remains the card's development source (code, tests, CI) — its built `glp-order-card.js` is synced into the integration repo on every release.
 
 ## Configuration
 
