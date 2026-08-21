@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### Changed
+- **Updated documentation to reflect bundling in glp-integration** — README.md now shows that the GLP Order Card ships bundled inside [GLP Integration](https://github.com/mxkissnr/glp-integration) and is automatically registered on install, removing the separate HACS-custom-repository and manual-resource-config steps. This matches the pattern already established by the GLP Shot Card. HACS badge updated accordingly.
 
 ## [1.21.2] – 2026-08-20
 ### Fixed
