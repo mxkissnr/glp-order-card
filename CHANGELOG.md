@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+## [1.21.3] – 2026-08-22
 ### Fixed
 - **The machine icon badge had no GaggiMate variant — it always rendered the Gaggiuino body shape.** `MACHINE_BODY`/`MACHINE_ICON_MINI` took no machine-type parameter at all, so a card pointed at a GaggiMate-type machine still showed the Gaggiuino's rectangular display module with 3 rocker switches and a steam knob. Both functions now take a `type` (`'gaggiuino' | 'gaggimate'`, default `'gaggiuino'`), which replaces just that top control area with a round chrome-housed puck for GaggiMate while keeping the shared lower body (side wall, front face, drip tray, base, feet) unchanged; geometry adapted from the approved `redesign-2026-08/build-prototype.py` puck design. The type is resolved via a new `_appMachineEntry()` helper (factored out of `_appMachineTheme()`, same `machines[]` entry lookup) reading the `.type` field HA already exposes per machine. `glp-order-card.js`. Closes #97
 ### Changed
