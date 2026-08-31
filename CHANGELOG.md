@@ -3,6 +3,8 @@
 ## [Unreleased]
 ### Changed
 - **Bumped the `github/codeql-action` digest pin to `db488dd`** (Renovate, #124). CI/tooling only, no card behavior change.
+### Chore
+- **Raised the coverage threshold from 58% to 68%** to match the real measured 70.33% baseline instead of a stale, wider-than-necessary floor. Closes #132
 
 ## [1.21.3] – 2026-08-22
 ### Fixed

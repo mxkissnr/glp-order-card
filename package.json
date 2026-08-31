@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "test": "node --test",
-    "test:coverage": "c8 --reporter=text --reporter=json-summary --check-coverage --lines=58 node --test",
+    "test:coverage": "c8 --reporter=text --reporter=json-summary --check-coverage --lines=68 node --test",
     "build": "node --check glp-order-card.js",
     "lint": "eslint .",
     "screenshot": "node scripts/screenshot.mjs"
