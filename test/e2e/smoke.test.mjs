@@ -21,6 +21,8 @@ function harnessHtml(switchState = 'on') {
   return `<!doctype html>
 <html><head><meta charset="utf-8"></head>
 <body>
+<!-- Stands in for HA's frontend so the card's deferred define (#145) fires. -->
+<script>customElements.define('home-assistant', class extends HTMLElement {});</script>
 <script src="/glp-order-card.js"></script>
 <script>
   const el = document.createElement('glp-order-card');

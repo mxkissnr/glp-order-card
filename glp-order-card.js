@@ -1828,7 +1828,10 @@ class GlpOrderCard extends HTMLElement {
   static getStubConfig()    { return {}; }
 }
 
-customElements.define('glp-order-card', GlpOrderCard);
+// Deferred until HA's scoped-registry polyfill has replaced customElements. #145
+const define = () => customElements.get('glp-order-card') || customElements.define('glp-order-card', GlpOrderCard);
+if (customElements.get('home-assistant')) define();
+else customElements.whenDefined('home-assistant').then(define);
 
 window.customCards = window.customCards || [];
 window.customCards.push({

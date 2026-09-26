@@ -25,7 +25,7 @@ function loadCardHelpers() {
 
   const context = {
     HTMLElement,
-    customElements: { define() {} },
+    customElements: { define() {}, get() {}, whenDefined() { return new Promise(() => {}); } },
     window: {},
     console,
     URL,
