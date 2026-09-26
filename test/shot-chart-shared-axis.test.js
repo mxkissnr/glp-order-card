@@ -21,10 +21,10 @@ function loadShotChart() {
     attachShadow() { this.shadowRoot = {}; return this.shadowRoot; }
   }
 
-  const registry = {};
+  const registry = { 'home-assistant': class extends HTMLElement {} };
   const context = {
     HTMLElement,
-    customElements: { define(tag, cls) { registry[tag] = cls; } },
+    customElements: { define(tag, cls) { registry[tag] = cls; }, get(tag) { return registry[tag]; }, whenDefined(tag) { return Promise.resolve(registry[tag]); } },
     window: {},
     document: { createElement() { return {}; } },
     console,

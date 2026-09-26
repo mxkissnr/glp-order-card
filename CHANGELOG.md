@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.21.5] – 2026-09-26
+### Fixed
+- **The card no longer fails with "Custom element doesn't exist" when it loads before Home Assistant's frontend has finished starting up.** Closes #145
+
 ## [1.21.4] – 2026-08-31
 ### Changed
 - **Bumped the `github/codeql-action` digest pin to `db488dd`** (Renovate, #124). CI/tooling only, no card behavior change.
