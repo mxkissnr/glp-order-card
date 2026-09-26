@@ -56,10 +56,10 @@ function loadCard() {
   // becomes a property of the vm context's global object the way a
   // `function` declaration would — capture the real class reference via the
   // customElements.define() call the file makes at module top level instead.
-  const registry = {};
+  const registry = { 'home-assistant': class extends HTMLElement {} };
   const context = {
     HTMLElement,
-    customElements: { define(tag, cls) { registry[tag] = cls; } },
+    customElements: { define(tag, cls) { registry[tag] = cls; }, get(tag) { return registry[tag]; }, whenDefined(tag) { return Promise.resolve(registry[tag]); } },
     window: {},
     document: fakeDocument,
     getComputedStyle(el) { return el.style; },

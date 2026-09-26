@@ -29,7 +29,7 @@ function loadGlpOrderCard() {
 
   class HTMLElement {}
   const context = {
-    HTMLElement, customElements: { define() {} }, window: {}, console, URL,
+    HTMLElement, customElements: { define() {}, get() {}, whenDefined() { return new Promise(() => {}); } }, window: {}, console, URL,
     navigator: { language: 'en-US' },
   };
   context.globalThis = context;
