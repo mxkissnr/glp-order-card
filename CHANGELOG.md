@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+## [1.21.5] – 2026-09-26
 ### Fixed
 - **The card no longer fails with "Custom element doesn't exist" when it loads before Home Assistant's frontend has finished starting up.** `glp-order-card.js` defers its registration until HA's `home-assistant` element exists and reads the global `customElements` at that moment, so the definition lands in the registry the scoped-registry polyfill installed. Closes #145
 
