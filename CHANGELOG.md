@@ -202,7 +202,7 @@ No changes to the card's runtime behavior — this release is CI/tooling hardeni
 
 ## [1.3.7] – 2026-05-26
 ### Fixed
-- `hass.fetchWithAuth` expects a path (`/api/hassio_ingress/...`), not a full URL — passing the absolute URL caused the HA origin to be prepended twice (`https://ha.kissner.prohttps//...`), triggering a CORS error; now extracts `pathname + search` from the URL before passing to `fetchWithAuth`; closes #8
+- `hass.fetchWithAuth` expects a path (`/api/hassio_ingress/...`), not a full URL — passing the absolute URL caused the HA origin to be prepended twice (`https://ha.example.comhttps//...`), triggering a CORS error; now extracts `pathname + search` from the URL before passing to `fetchWithAuth`; closes #8
 
 ## [1.3.6] – 2026-05-26
 ### Fixed
