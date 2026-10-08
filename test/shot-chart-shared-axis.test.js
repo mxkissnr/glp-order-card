@@ -20,7 +20,9 @@ const registry = { 'home-assistant': class extends HTMLElement {} };
 const { GlpOrderCard } = loadCard({
   context: {
     HTMLElement,
-    document: { createElement() { return {}; } },
+    // Lit calls document.createTreeWalker while it is imported; required by Lit
+    // itself, not a missing-package shim. Nothing renders here.
+    document: { createElement() { return {}; }, createTreeWalker() { return {}; } },
     customElements: { define(tag, cls) { registry[tag] = cls; }, get(tag) { return registry[tag]; }, whenDefined(tag) { return Promise.resolve(registry[tag]); } },
   },
 });
