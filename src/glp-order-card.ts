@@ -3,7 +3,15 @@
 // never leak into the page scope this card shares with glp-card.js as a second
 // classic <script src> — a same-named top-level const in both files would throw
 // on the second load (glp-integration#157, #114).
+//
+// Rendering uses Lit templates (render() patches the existing DOM in place).
+// The Lit runtime is bundled into this IIFE by esbuild — never loaded as a
+// shared module — so the two GLP cards keep fully separate scopes
+// (glp-lovelace-card#141).
 
+import { render, html, nothing } from 'lit';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
+import { ifDefined } from 'lit/directives/if-defined.js';
 import { STYLES } from './styles.ts';
 import { _esc, _originHtml, _safeUrl, THEME_PRESETS, _validHex } from './helpers.ts';
 import { MACHINE_ICON_MINI, ICONS, _menuIconHtml } from './icons.ts';
@@ -35,11 +43,7 @@ class GlpOrderCard extends HTMLElement {
     this._lastShot  = null;
     this._pollTimer = null;
     this._submitting = false;
-    this._noteInteracting = false;
-    this._pendingRender   = false;
-    this._clickBlocked    = false;
     this._queueEta        = null;
-    this._clickBlockTimer = null;
     this._hassRenderTimer = null;
     this._lang = navigator.language.slice(0,2).toLowerCase();
     if (!STRINGS[this._lang]) this._lang = 'en';
@@ -215,13 +219,13 @@ class GlpOrderCard extends HTMLElement {
     this._hass = hass;
     if (firstHass && this._menu === null) {
       this._load();
-    } else if (!this._noteInteracting && !this._clickBlocked) {
+    } else {
       // Debounce hass-triggered renders: HA pushes updates very frequently
-      // (entity state ticks, etc.) — 1 s is fast enough for machine on/off changes
+      // (entity state ticks, etc.) — 1 s is fast enough for machine on/off changes.
+      // render() patches the existing DOM, so a deferred update can no longer
+      // wipe an in-progress interaction; this only limits work.
       clearTimeout(this._hassRenderTimer);
-      this._hassRenderTimer = setTimeout(() => {
-        if (!this._noteInteracting && !this._clickBlocked) this._render();
-      }, 1000);
+      this._hassRenderTimer = setTimeout(() => this._render(), 1000);
     }
   }
 
@@ -337,11 +341,7 @@ class GlpOrderCard extends HTMLElement {
         this._lastShot = null;
       }
     } catch { this._activeOrder = null; this._lastShot = null; }
-    if (this._noteInteracting || this._clickBlocked) {
-      this._pendingRender = true;
-    } else {
-      this._render();
-    }
+    this._render();
   }
 
   _machineOff() {
@@ -409,7 +409,7 @@ class GlpOrderCard extends HTMLElement {
   // ratios behind all four). Sets the winning values as an inline style on
   // the host, which always outranks the plain :host declarations in STYLES
   // regardless of any stylesheet/media-query state. Called from _render()
-  // right after the shadow DOM (and its :host rules) are rebuilt.
+  // right after the templates are applied, so the :host rules exist.
   _applySemanticColorContrast() {
     const bgLuminance = this._luminanceOf(getComputedStyle(this).getPropertyValue('--glp-bg').trim());
     if (bgLuminance != null) {
@@ -488,55 +488,38 @@ class GlpOrderCard extends HTMLElement {
     const title = this._config.title || _s('title', lang);
     const off   = this._machineOff();
 
-    // Skip redundant full re-renders (polling/hass ticks) — only rebuild the DOM
-    // when something user-visible actually changed. Prevents flicker on the status view.
-    const o = this._activeOrder;
-    const minsLeft = o?.status === 'accepted'
-      ? Math.max(0, Math.ceil((o.acceptedAt + o.eta * 60000 - Date.now()) / 60000)) : null;
-    const sig = JSON.stringify([
-      off, this._enabled, this._menu ? this._menu.length : -1,
-      this._selected, this._selectedVariant, this._submitting,
-      o && [o.id, o.status], minsLeft, this._lastShot?.id ?? null,
-      this._queueEta?.positions?.[o?.id]?.position ?? null,
-      title, lang, this._activeBeans?.length ?? -1,
-    ]);
-    if (sig === this._lastRenderSig) return;
-    this._lastRenderSig = sig;
-
     let body;
-
     if (off) {
-      body = `<div class="machine-off">${_s('off', lang)}</div>`;
+      body = html`<div class="machine-off">${_s('off', lang)}</div>`;
     } else if (!this._enabled) {
-      body = `<div class="machine-off">${_s('paused', lang)}</div>`;
+      body = html`<div class="machine-off">${_s('paused', lang)}</div>`;
     } else if (this._activeOrder) {
       body = this._renderStatus(this._activeOrder, lang);
     } else if (this._menu === null) {
-      body = `<div class="loading">${_s('loading', lang)}</div>`;
+      body = html`<div class="loading">${_s('loading', lang)}</div>`;
     } else {
       body = this._renderOrderForm(lang);
     }
 
     this._applyThemeVars();
-    this.shadowRoot.innerHTML = `
+    render(html`
       <style>${STYLES}</style>
       <ha-card>
         <div class="card">
           <div class="header">
-            ${this._machineGlyphHtml('header', 'hdr')}
-            ${_esc(title)}
+            ${/* _machineGlyphHtml() returns fixed SVG markup, no user input */ unsafeHTML(this._machineGlyphHtml('header', 'hdr'))}
+            ${title}
           </div>
           ${body}
         </div>
-      </ha-card>`;
+      </ha-card>`, this.shadowRoot);
 
     this._applySemanticColorContrast();
-    this._bindEvents();
   }
 
   _renderOrderForm(lang) {
     if (!this._menu || this._menu.length === 0) {
-      return `<div class="loading">${_s('no_menu', lang)}</div>`;
+      return html`<div class="loading">${_s('no_menu', lang)}</div>`;
     }
 
     // Hide useBeans items when no active beans are in stock
@@ -544,42 +527,43 @@ class GlpOrderCard extends HTMLElement {
       !m.useBeans || (Array.isArray(this._activeBeans) && this._activeBeans.length > 0)
     );
     if (visibleMenu.length === 0) {
-      return `<div class="loading">${_s('no_menu', lang)}</div>`;
+      return html`<div class="loading">${_s('no_menu', lang)}</div>`;
     }
 
     const newThreshold = (parseFloat(this._config?.new_badge_days) || NEW_BADGE_DAYS_DEFAULT) * 24 * 60 * 60 * 1000;
     const now = Date.now();
 
     const renderItem = m => {
-      const isNew     = m.createdAt && (now - m.createdAt) < newThreshold;
-      const newBadge  = isNew     ? `<span class="menu-badge menu-badge-new">NEW</span>` : '';
-      const trendBadge = m.trending ? `<span class="menu-badge menu-badge-trend">${ICONS.of('heat')}</span>` : '';
-      return `<div class="menu-item${this._selected === m.name ? ' selected' : ''}" data-item="${_esc(m.name)}">
-        <div class="menu-item-icon">${_menuIconHtml(m)}</div>
-        <div class="menu-item-name">${_esc(m.name)}${trendBadge}${newBadge}</div>
+      const isNew      = m.createdAt && (now - m.createdAt) < newThreshold;
+      const newBadge   = isNew ? html`<span class="menu-badge menu-badge-new">NEW</span>` : nothing;
+      const trendBadge = m.trending
+        ? html`<span class="menu-badge menu-badge-trend">${/* ICONS.of() emits fixed SVG markup */ unsafeHTML(ICONS.of('heat'))}</span>`
+        : nothing;
+      return html`<div class="menu-item${this._selected === m.name ? ' selected' : ''}" data-item=${m.name} @click=${() => this._selectItem(m.name)}>
+        <div class="menu-item-icon">${/* _menuIconHtml() returns a fixed icon or an escaped emoji */ unsafeHTML(_menuIconHtml(m))}</div>
+        <div class="menu-item-name">${m.name}${trendBadge}${newBadge}</div>
       </div>`;
     };
 
     const trending = visibleMenu.filter(m => m.trending);
     const regular  = visibleMenu.filter(m => !m.trending);
 
-    const trendSection = trending.length ? `
-      <p class="menu-section-title">${ICONS.of('heat')} ${_esc(_s('trending_title', lang))}</p>
-      <div class="menu-grid">${trending.map(renderItem).join('')}</div>` : '';
-    const regularSection = regular.length ? `
-      ${trending.length ? `<p class="menu-section-title" style="margin-top:var(--glp-sp-3)">${_s('menu_all', lang)}</p>` : ''}
-      <div class="menu-grid">${regular.map(renderItem).join('')}</div>` : '';
+    const trendSection = trending.length ? html`
+      <p class="menu-section-title">${/* ICONS.of() emits fixed SVG markup */ unsafeHTML(ICONS.of('heat'))} ${_s('trending_title', lang)}</p>
+      <div class="menu-grid">${trending.map(renderItem)}</div>` : nothing;
+    const regularSection = regular.length ? html`
+      ${trending.length ? html`<p class="menu-section-title" style="margin-top:var(--glp-sp-3)">${_s('menu_all', lang)}</p>` : nothing}
+      <div class="menu-grid">${regular.map(renderItem)}</div>` : nothing;
 
     const selectedItem = visibleMenu.find(m => m.name === this._selected);
     const variants = this._getVariants(selectedItem);
     const needsVariant = variants.length > 0 && !this._selectedVariant;
     const groupedVariants = this._getVariantsGrouped(selectedItem);
-    const wrapperClass = groupedVariants.flat ? ' class="variant-grid"' : '';
-    const variantSection = (this._selected && variants.length > 0) ? `
+    const variantSection = (this._selected && variants.length > 0) ? html`
       <p class="variant-label">${_s('variant_label', lang)}</p>
-      <div id="oc-variants"${wrapperClass}>
+      <div id="oc-variants" class=${groupedVariants.flat ? 'variant-grid' : ''}>
         ${this._variantInnerHtml(groupedVariants, lang)}
-      </div>` : '';
+      </div>` : nothing;
     const beanInfoSection = this._beanInfoHtml(this._getSelectedBean(), lang);
     const itemLabel = (this._selected && this._selectedVariant)
       ? `${this._selected} · ${this._selectedVariant}`
@@ -587,13 +571,13 @@ class GlpOrderCard extends HTMLElement {
     const btnLabel = itemLabel ? _s('order_btn', lang, itemLabel)
       : needsVariant ? _s('variant_select', lang)
       : _s('order_btn_select', lang);
-    return `
+    return html`
       <div class="order-form">
         ${trendSection}${regularSection}
         ${variantSection}${beanInfoSection}
-        <input class="note-input" id="oc-note" placeholder="${_s('note_ph', lang)}" maxlength="200">
-        <button class="order-btn" id="oc-submit" ${!this._selected || this._submitting || needsVariant ? 'disabled' : ''}>
-          ${itemLabel ? ICONS.of('coffee') + ' ' : ''}${_esc(btnLabel)}
+        <input class="note-input" id="oc-note" placeholder=${_s('note_ph', lang)} maxlength="200">
+        <button class="order-btn" id="oc-submit" ?disabled=${!this._selected || this._submitting || needsVariant} @click=${() => this._placeOrder()}>
+          ${/* ICONS.of() emits fixed SVG markup */ unsafeHTML(ICONS.of('coffee'))} ${btnLabel}
         </button>
       </div>`;
   }
@@ -653,121 +637,87 @@ class GlpOrderCard extends HTMLElement {
   }
 
   _renderShotSummary(shot, _lang) {
-    if (!shot) return '';
+    if (!shot) return nothing;
     const profile  = shot.profile?.name || shot.profileName || '–';
     const dur      = shot.duration ? `${(shot.duration / 10).toFixed(0)} s` : null;
     const wtArr    = shot.datapoints?.shotWeight || shot.datapoints?.weight;
     const yield_g  = Array.isArray(wtArr) && wtArr.length ? `${(wtArr[wtArr.length - 1] / 10).toFixed(1)} g` : null;
     const meta     = [dur, yield_g].filter(Boolean).join(' · ');
-    const chart = this._shotChart(shot);
-    return `<div class="shot-summary">
-      <div class="shot-summary-profile">${_esc(profile)}</div>
-      ${meta ? `<div class="shot-summary-meta">${_esc(meta)}</div>` : ''}
-      ${chart}
+    const chart    = this._shotChart(shot);
+    return html`<div class="shot-summary">
+      <div class="shot-summary-profile">${profile}</div>
+      ${meta ? html`<div class="shot-summary-meta">${meta}</div>` : nothing}
+      ${/* _shotChart() builds SVG from numeric datapoints and fixed labels only */ chart ? unsafeHTML(chart) : nothing}
     </div>`;
   }
 
   _renderStatus(order, lang) {
-    let content = '';
     const itemLabel = order.variant ? `${order.item} · ${order.variant}` : order.item;
     // Multi-machine (#29): only shown when the order actually carries a
     // machine name — orders placed before this feature, or on a
     // single-machine setup that never sets `machine` in config, render
     // exactly as before.
     const machineLine = order.machine
-      ? `<div class="status-line status-machine">${this._machineGlyphHtml('status', 'stat')}${_esc(order.machine)}</div>` : '';
+      ? html`<div class="status-line status-machine">${/* _machineGlyphHtml() returns fixed SVG markup, no user input */ unsafeHTML(this._machineGlyphHtml('status', 'stat'))}${order.machine}</div>`
+      : nothing;
 
+    let content = nothing;
     if (order.status === 'pending') {
       const qp = this._queueEta?.positions?.[order.id];
       const queueLine = qp
-        ? `<div class="status-line">${_esc(_s('queue_pos', lang, qp.position, qp.suggestedEta))}</div>`
-        : '';
-      content = `<div class="status-card pending">
-        <div class="status-item">${ICONS.of('hourglass')} ${_esc(_s('pending', lang, itemLabel))}</div>
+        ? html`<div class="status-line">${_s('queue_pos', lang, qp.position, qp.suggestedEta)}</div>`
+        : nothing;
+      content = html`<div class="status-card pending">
+        <div class="status-item">${/* ICONS.of() emits fixed SVG markup */ unsafeHTML(ICONS.of('hourglass'))} ${_s('pending', lang, itemLabel)}</div>
         ${machineLine}
         ${queueLine}
       </div>`;
     } else if (order.status === 'accepted') {
       const etaDone   = order.acceptedAt + order.eta * 60000;
       const minsLeft  = Math.max(0, Math.ceil((etaDone - Date.now()) / 60000));
-      content = `<div class="status-card accepted">
-        <div class="status-item">${ICONS.of('coffee')} ${_esc(_s('accepted', lang, itemLabel, minsLeft))}</div>
+      content = html`<div class="status-card accepted">
+        <div class="status-item">${/* ICONS.of() emits fixed SVG markup */ unsafeHTML(ICONS.of('coffee'))} ${_s('accepted', lang, itemLabel, minsLeft)}</div>
         ${machineLine}
-        <div class="status-eta">${minsLeft === 0 ? `${ICONS.of('celebrate')} ${_s('almost_ready', this._lang)}` : `~${minsLeft} min`}</div>
+        <div class="status-eta">${minsLeft === 0 ? html`${/* ICONS.of() emits fixed SVG markup */ unsafeHTML(ICONS.of('celebrate'))} ${_s('almost_ready', this._lang)}` : `~${minsLeft} min`}</div>
       </div>`;
     } else if (order.status === 'done') {
       const shotHtml = this._renderShotSummary(this._lastShot, lang);
-      content = `<div class="status-card done">
-        <div class="status-done-msg">${ICONS.of('check')} ${_esc(_s('done', lang, itemLabel))}</div>
+      content = html`<div class="status-card done">
+        <div class="status-done-msg">${/* ICONS.of() emits fixed SVG markup */ unsafeHTML(ICONS.of('check'))} ${_s('done', lang, itemLabel)}</div>
       </div>${shotHtml}`;
     } else if (order.status === 'declined') {
-      content = `<div class="status-card declined">
-        <div class="status-item">${ICONS.of('close')} ${_esc(_s('declined', lang, itemLabel))}</div>
-        ${order.declineReason ? `<div class="status-decline">${_esc(_s('decline_reason', lang, order.declineReason))}</div>` : ''}
+      content = html`<div class="status-card declined">
+        <div class="status-item">${/* ICONS.of() emits fixed SVG markup */ unsafeHTML(ICONS.of('close'))} ${_s('declined', lang, itemLabel)}</div>
+        ${order.declineReason ? html`<div class="status-decline">${_s('decline_reason', lang, order.declineReason)}</div>` : nothing}
       </div>`;
     }
 
-    return `${content}<button class="new-order-btn" id="oc-new-order">${_s('new_order', lang)}</button>`;
+    return html`${content}<button class="new-order-btn" id="oc-new-order" @click=${() => this._newOrder()}>${_s('new_order', lang)}</button>`;
   }
 
-  _bindEvents() {
-    // Block any render for 300 ms after a pointer interaction to prevent
-    // DOM replacement eating the click event before it fires
-    this.shadowRoot.addEventListener('pointerdown', () => {
-      this._clickBlocked = true;
-      clearTimeout(this._clickBlockTimer);
-      this._clickBlockTimer = setTimeout(() => {
-        this._clickBlocked = false;
-        if (this._pendingRender && !this._noteInteracting) {
-          this._pendingRender = false;
-          this._render();
-        }
-      }, 300);
-    }, { passive: true });
+  // Menu item selection: toggles this._selected, resets the variant, and
+  // re-renders. With Lit the DOM is patched in place, so no click-guard is
+  // needed to survive a concurrent hass update.
+  _selectItem(name) {
+    const prev = this._selected;
+    this._selected = this._selected === name ? null : name;
+    if (this._selected !== prev) { this._selectedVariant = null; this._selectedBeanId = null; }
+    this._render();
+  }
 
-    // Menu item selection — toggle CSS only, no full re-render
-    this.shadowRoot.querySelectorAll('.menu-item').forEach(el => {
-      el.addEventListener('click', () => {
-        const prev = this._selected;
-        this._selected = this._selected === el.dataset.item ? null : el.dataset.item;
-        if (this._selected !== prev) { this._selectedVariant = null; this._selectedBeanId = null; }
-        // Update selected state without replacing the DOM
-        this.shadowRoot.querySelectorAll('.menu-item').forEach(m => {
-          m.classList.toggle('selected', m.dataset.item === this._selected);
-        });
-        this._updateVariantPicker();
-        this._updateSubmitBtn();
-      });
-    });
+  _selectVariant(variant, beanId) {
+    const wasSelected = this._selectedVariant === variant;
+    this._selectedVariant = wasSelected ? null : variant;
+    this._selectedBeanId  = wasSelected ? null : (beanId != null ? Number(beanId) : null);
+    this._render();
+  }
 
-    // Variant chip selection
-    this._bindVariantChips();
-
-    // Note input: block re-renders while user is typing
-    const noteEl = this.shadowRoot.getElementById('oc-note');
-    if (noteEl) {
-      noteEl.addEventListener('focus', () => { this._noteInteracting = true; });
-      noteEl.addEventListener('blur',  () => {
-        this._noteInteracting = false;
-        if (this._pendingRender) { this._pendingRender = false; this._render(); }
-      });
-    }
-    // Submit
-    const submitBtn = this.shadowRoot.getElementById('oc-submit');
-    if (submitBtn) {
-      submitBtn.addEventListener('click', () => this._placeOrder());
-    }
-    // New order
-    const newBtn = this.shadowRoot.getElementById('oc-new-order');
-    if (newBtn) {
-      newBtn.addEventListener('click', () => {
-        this._activeOrder     = null;
-        this._selected        = null;
-        this._selectedVariant = null;
-        this._selectedBeanId  = null;
-        this._render();
-      });
-    }
+  _newOrder() {
+    this._activeOrder     = null;
+    this._selected        = null;
+    this._selectedVariant = null;
+    this._selectedBeanId  = null;
+    this._render();
   }
 
   _getVariants(item) {
@@ -802,25 +752,23 @@ class GlpOrderCard extends HTMLElement {
 
   _variantChipHtml(v) {
     const beanId = this._beanIdForLabel(v);
-    const idAttr = beanId != null ? ` data-bean-id="${_esc(beanId)}"` : '';
-    return `<div class="variant-chip${this._selectedVariant === v ? ' selected' : ''}" data-variant="${_esc(v)}"${idAttr}>${_esc(v)}</div>`;
+    return html`<div class="variant-chip${this._selectedVariant === v ? ' selected' : ''}" data-variant=${v} data-bean-id=${ifDefined(beanId ?? undefined)} @click=${() => this._selectVariant(v, beanId)}>${v}</div>`;
   }
 
-  // Shared by _renderOrderForm() and _updateVariantPicker() so the two never
-  // drift. Mirrors the trending/regular section pattern (~line 650): headings
-  // shown only when both groups are non-empty — a single-group list (e.g. all
-  // beans untagged) renders as one plain grid, no noisy "Normal" label.
+  // Mirrors the trending/regular section pattern (~line 650): headings shown
+  // only when both groups are non-empty — a single-group list (e.g. all beans
+  // untagged) renders as one plain grid, no noisy "Normal" label.
   _variantInnerHtml(grouped, lang) {
-    if (grouped.flat) return grouped.flat.map(v => this._variantChipHtml(v)).join('');
+    if (grouped.flat) return html`${grouped.flat.map(v => this._variantChipHtml(v))}`;
     const { speciality, normal } = grouped;
     const showHeadings = speciality.length > 0 && normal.length > 0;
-    const specialitySection = speciality.length ? `
-      ${showHeadings ? `<p class="menu-section-title">${_s('variant_speciality', lang)}</p>` : ''}
-      <div class="variant-grid">${speciality.map(v => this._variantChipHtml(v)).join('')}</div>` : '';
-    const normalSection = normal.length ? `
-      ${showHeadings ? `<p class="menu-section-title" style="margin-top:var(--glp-sp-3)">${_s('variant_normal', lang)}</p>` : ''}
-      <div class="variant-grid">${normal.map(v => this._variantChipHtml(v)).join('')}</div>` : '';
-    return specialitySection + normalSection;
+    const specialitySection = speciality.length ? html`
+      ${showHeadings ? html`<p class="menu-section-title">${_s('variant_speciality', lang)}</p>` : nothing}
+      <div class="variant-grid">${speciality.map(v => this._variantChipHtml(v))}</div>` : nothing;
+    const normalSection = normal.length ? html`
+      ${showHeadings ? html`<p class="menu-section-title" style="margin-top:var(--glp-sp-3)">${_s('variant_normal', lang)}</p>` : nothing}
+      <div class="variant-grid">${normal.map(v => this._variantChipHtml(v))}</div>` : nothing;
+    return html`${specialitySection}${normalSection}`;
   }
 
   // Id-first with a name fallback (#35), mirroring resolveBeanForAnnotation()
@@ -842,94 +790,13 @@ class GlpOrderCard extends HTMLElement {
     const origins = Array.isArray(bean?.origins) && bean.origins.length
       ? bean.origins
       : (bean?.origin ? [{ code: bean.origin }] : []);
-    if (!bean || (!bean.notes && !origins.length && !bean.variety && !bean.process)) return '';
+    if (!bean || (!bean.notes && !origins.length && !bean.variety && !bean.process)) return nothing;
     const rows = [];
-    if (bean.notes)      rows.push(`<div class="bean-info-notes">${_esc(bean.notes)}</div>`);
-    if (origins.length)  rows.push(`<div class="bean-info-row"><span class="bean-info-label">${_s('bean_origin', lang)}</span><span>${_originHtml(origins, lang)}</span></div>`);
-    if (bean.variety) rows.push(`<div class="bean-info-row"><span class="bean-info-label">${_s('bean_variety', lang)}</span><span>${_esc(bean.variety)}</span></div>`);
-    if (bean.process) rows.push(`<div class="bean-info-row"><span class="bean-info-label">${_s('bean_process', lang)}</span><span>${_esc(bean.process)}</span></div>`);
-    return `<div class="bean-info" id="oc-bean-info">${rows.join('')}</div>`;
-  }
-
-  _updateBeanInfo() {
-    const container = this.shadowRoot.querySelector('.order-form');
-    if (!container) return;
-    const existing = this.shadowRoot.getElementById('oc-bean-info');
-    const html = this._beanInfoHtml(this._getSelectedBean(), this._lang);
-    if (!html) { if (existing) existing.remove(); return; }
-    if (existing) { existing.outerHTML = html; return; }
-    const tpl = document.createElement('template');
-    tpl.innerHTML = html;
-    container.insertBefore(tpl.content.firstElementChild, this.shadowRoot.getElementById('oc-note'));
-  }
-
-  _updateVariantPicker() {
-    const selectedItem = this._menu?.find(m => m.name === this._selected);
-    const variants = this._getVariants(selectedItem);
-    const container = this.shadowRoot.querySelector('.order-form');
-    if (!container) return;
-    let vRow = this.shadowRoot.getElementById('oc-variants');
-    const vLabel = this.shadowRoot.querySelector('.variant-label');
-    if (variants.length === 0) {
-      if (vRow)   vRow.remove();
-      if (vLabel) vLabel.remove();
-      this._updateBeanInfo();
-      return;
-    }
-    if (!vRow) {
-      const label = document.createElement('p');
-      label.className = 'variant-label';
-      label.textContent = _s('variant_label', this._lang);
-      const grid = document.createElement('div');
-      grid.id = 'oc-variants';
-      const noteInput = this.shadowRoot.getElementById('oc-note');
-      container.insertBefore(label, noteInput);
-      container.insertBefore(grid, noteInput);
-      vRow = grid;
-    }
-    const grouped = this._getVariantsGrouped(selectedItem);
-    vRow.className = grouped.flat ? 'variant-grid' : '';
-    vRow.innerHTML = this._variantInnerHtml(grouped, this._lang);
-    this._bindVariantChips();
-    this._updateBeanInfo();
-  }
-
-  _bindVariantChips() {
-    this.shadowRoot.querySelectorAll('.variant-chip').forEach(chip => {
-      chip.addEventListener('click', () => {
-        const wasSelected = this._selectedVariant === chip.dataset.variant;
-        this._selectedVariant = wasSelected ? null : chip.dataset.variant;
-        this._selectedBeanId  = wasSelected ? null : (chip.dataset.beanId != null ? Number(chip.dataset.beanId) : null);
-        this.shadowRoot.querySelectorAll('.variant-chip').forEach(c => {
-          c.classList.toggle('selected', c.dataset.variant === this._selectedVariant);
-        });
-        this._updateSubmitBtn();
-        this._updateBeanInfo();
-      });
-    });
-  }
-
-  _updateSubmitBtn() {
-    const selectedItem = this._menu?.find(m => m.name === this._selected);
-    const variants = this._getVariants(selectedItem);
-    const needsVariant = variants.length > 0 && !this._selectedVariant;
-    const btn = this.shadowRoot.getElementById('oc-submit');
-    if (!btn) return;
-    if (!this._selected) {
-      btn.textContent = _s('order_btn_select', this._lang);
-      btn.disabled = true;
-    } else if (needsVariant) {
-      btn.textContent = _s('variant_select', this._lang);
-      btn.disabled = true;
-    } else {
-      // textContent, not innerHTML — this is the fast incremental update path
-      // (variant/note interaction), not a full _renderOrderForm() pass, so it
-      // doesn't carry the coffee icon _renderOrderForm() puts in the button on
-      // a full render. Text-only here, same as the other two branches above.
-      const itemLabel = this._selectedVariant ? `${this._selected} · ${this._selectedVariant}` : this._selected;
-      btn.textContent = _s('order_btn', this._lang, itemLabel);
-      btn.disabled = !!this._submitting;
-    }
+    if (bean.notes)      rows.push(html`<div class="bean-info-notes">${bean.notes}</div>`);
+    if (origins.length)  rows.push(html`<div class="bean-info-row"><span class="bean-info-label">${_s('bean_origin', lang)}</span><span>${/* _originHtml() escapes its own input */ unsafeHTML(_originHtml(origins, lang))}</span></div>`);
+    if (bean.variety) rows.push(html`<div class="bean-info-row"><span class="bean-info-label">${_s('bean_variety', lang)}</span><span>${bean.variety}</span></div>`);
+    if (bean.process) rows.push(html`<div class="bean-info-row"><span class="bean-info-label">${_s('bean_process', lang)}</span><span>${bean.process}</span></div>`);
+    return html`<div class="bean-info" id="oc-bean-info">${rows}</div>`;
   }
 
   async _placeOrder() {
