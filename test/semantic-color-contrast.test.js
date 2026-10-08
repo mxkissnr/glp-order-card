@@ -46,6 +46,9 @@ class HTMLElement {
 
 const fakeDocument = {
   createElement() { return { style: makeStyleStub(), remove() {} }; },
+  // Lit reads document.createTreeWalker when it is imported; this test never
+  // calls render(), so the rest of the DOM surface is not needed.
+  createTreeWalker() { return {}; },
 };
 
 // The shared helper injects the real `class GlpOrderCard` reference after the

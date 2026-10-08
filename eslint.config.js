@@ -14,9 +14,13 @@ const commonRules = {
 
 module.exports = [
   {
-    // src/** is TypeScript; TS-aware linting of it follows in a later slice of
-    // #143. For now only the generated bundle it builds is linted.
-    ignores: ['node_modules/**', 'docs/**', 'graphify-out/**', 'src/**'],
+    // glp-order-card.js is generated from src/ by esbuild and now inlines the
+    // Lit runtime, whose minified third-party code cannot be meaningfully
+    // linted. TS-aware linting of src/ follows in a later slice of #143; until
+    // then the innerHTML assignment gate lives in the build/CI checks
+    // (`grep -nE "(inner|outer)HTML\s*=" src/*.ts`). docs/ and graphify-out/
+    // are generated artifacts too.
+    ignores: ['node_modules/**', 'docs/**', 'graphify-out/**', 'src/**', 'glp-order-card.js'],
   },
   js.configs.recommended,
   {
@@ -38,18 +42,5 @@ module.exports = [
       globals: globals.node,
     },
     rules: commonRules,
-  },
-  {
-    files: ['glp-order-card.js'],
-    languageOptions: {
-      globals: globals.browser,
-    },
-    rules: {
-      ...commonRules,
-      // The generated bundle is built from src/ with esbuild, which strips the
-      // explanatory comment inside the source's otherwise-empty catch blocks —
-      // making those catch bodies lint as empty. Allow empty catch here.
-      'no-empty': ['error', { allowEmptyCatch: true }],
-    },
   },
 ];

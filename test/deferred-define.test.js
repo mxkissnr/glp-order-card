@@ -54,6 +54,9 @@ function loadCard(customElements) {
     HTMLElement,
     customElements,
     window: {},
+    // The committed bundle inlines Lit's browser build, which reads
+    // `document` (and its createTreeWalker) while loading. No render runs here.
+    document: { createTreeWalker() { return {}; } },
     console: { info() {} },
     URL,
     navigator: { language: 'en-US' },

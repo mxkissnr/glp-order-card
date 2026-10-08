@@ -13,23 +13,29 @@ const { loadCard } = require('./helpers/load-card.cjs');
 const NAME_PAYLOAD = '<img src=x onerror=alert(1)>';
 const NOTE_PAYLOAD = '<script>alert(1)</script>';
 
-function makeCard() {
-  // A fresh happy-dom Window per call; its globals are installed before the
-  // card module (and therefore Lit) is first required, so Lit binds to a real
-  // document for render().
-  const window = new Window();
-  const { GlpOrderCard } = loadCard({
-    context: {
-      document: window.document,
-      window,
-      HTMLElement: window.HTMLElement,
-      customElements: window.customElements,
-      navigator: window.navigator,
-      getComputedStyle: window.getComputedStyle.bind(window),
-    },
-  });
+// One happy-dom Window for the whole file: node --test loads the card (and
+// therefore Lit) once per process, and Lit binds to whatever global document
+// exists when it is first imported. The window must be installed before
+// loadCard() requires the card.
+const window = new Window();
+// Publish `home-assistant` first so the card's deferred define (#145) fires
+// synchronously and registers `glp-order-card` in this window's registry.
+window.customElements.define('home-assistant', class extends window.HTMLElement {});
+loadCard({
+  context: {
+    document: window.document,
+    window,
+    HTMLElement: window.HTMLElement,
+    customElements: window.customElements,
+    navigator: window.navigator,
+    getComputedStyle: window.getComputedStyle.bind(window),
+  },
+});
 
-  const card = new GlpOrderCard();
+function makeCard() {
+  // happy-dom forbids constructing its element classes with `new` directly, so
+  // the card is built and upgraded through its custom-element registry.
+  const card = window.document.createElement('glp-order-card');
   card._config = {};
   card._lang = 'en';
   card._enabled = true;
