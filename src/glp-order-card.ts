@@ -44,6 +44,7 @@ class GlpOrderCard extends HTMLElement {
   declare _selectedBeanId: number | null;
   declare _activeBeans: Bean[] | null;
   declare _activeOrder: Order | null;
+  declare _dismissedOrderId: string | null;
   declare _lastShot: Shot | null;
   declare _pollTimer: ReturnType<typeof setTimeout> | null;
   declare _submitting: boolean;
@@ -64,6 +65,7 @@ class GlpOrderCard extends HTMLElement {
     this._selectedBeanId  = null;
     this._activeBeans = null;
     this._activeOrder = null;
+    this._dismissedOrderId = null;
     this._lastShot  = null;
     this._pollTimer = null;
     this._submitting = false;
@@ -353,7 +355,7 @@ class GlpOrderCard extends HTMLElement {
     try {
       const orders = await this._fetch(`api/orders/mine?haUserId=${encodeURIComponent(haUser.id)}`).then(r => r.json()) as Order[];
       const active = orders.find(o => ['pending','accepted'].includes(o.status));
-      const recent = !active ? orders.find(o => ['done','declined'].includes(o.status) && (Date.now() - (o.completedAt||0)) < 120000) : null;
+      const recent = !active ? orders.find(o => ['done','declined'].includes(o.status) && o.id !== this._dismissedOrderId && (Date.now() - (o.completedAt||0)) < 120000) : null;
       this._activeOrder = active || recent || null;
       if (this._activeOrder?.status === 'done' && !this._lastShot) {
         try {
@@ -737,6 +739,7 @@ class GlpOrderCard extends HTMLElement {
   }
 
   _newOrder(): void {
+    this._dismissedOrderId = this._activeOrder?.id ?? null;
     this._activeOrder     = null;
     this._selected        = null;
     this._selectedVariant = null;
