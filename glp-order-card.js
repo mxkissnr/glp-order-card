@@ -1342,7 +1342,7 @@
   }
 
   // src/glp-order-card.ts
-  var GLP_ORDER_CARD_VERSION = "1.21.5";
+  var GLP_ORDER_CARD_VERSION = "1.22.0";
   var NEW_BADGE_DAYS_DEFAULT = 7;
   var _glpOrderCardInstanceSeq = 0;
   var GlpOrderCard = class extends HTMLElement {
