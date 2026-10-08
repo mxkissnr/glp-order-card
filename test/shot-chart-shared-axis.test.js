@@ -3,42 +3,29 @@
 // flat temperature curve (e.g. 93.0-93.4°C, typical for a real shot) got
 // stretched to fill the full chart height exactly like the pressure curve
 // (0-9 bar), making the curves' relative shapes meaningless when overlaid.
-// Loads the real glp-order-card.js into a sandboxed vm context (same pattern
-// as the other test files here) and calls the real _shotChart() — it doesn't
-// use `this` internally, so it's called detached off the prototype.
+// Loads the real glp-order-card.js through the shared test/helpers/load-card.cjs
+// harness and calls the real _shotChart() — it doesn't use `this` internally,
+// so it's called detached off the prototype.
 'use strict';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
+const { loadCard } = require('./helpers/load-card.cjs');
 
-function loadShotChart() {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'glp-order-card.js'), 'utf8');
-
-  class HTMLElement {
-    attachShadow() { this.shadowRoot = {}; return this.shadowRoot; }
-  }
-
-  const registry = { 'home-assistant': class extends HTMLElement {} };
-  const context = {
-    HTMLElement,
-    customElements: { define(tag, cls) { registry[tag] = cls; }, get(tag) { return registry[tag]; }, whenDefined(tag) { return Promise.resolve(registry[tag]); } },
-    window: {},
-    document: { createElement() { return {}; } },
-    console,
-    URL,
-    navigator: { language: 'en-US' },
-  };
-  vm.createContext(context);
-  vm.runInContext(src, context, { filename: path.join(__dirname, '..', 'glp-order-card.js') });
-
-  const GlpOrderCard = registry['glp-order-card'];
-  return shot => GlpOrderCard.prototype._shotChart.call(null, shot);
+class HTMLElement {
+  attachShadow() { this.shadowRoot = {}; return this.shadowRoot; }
 }
 
-const shotChart = loadShotChart();
+const registry = { 'home-assistant': class extends HTMLElement {} };
+const { GlpOrderCard } = loadCard({
+  context: {
+    HTMLElement,
+    document: { createElement() { return {}; } },
+    customElements: { define(tag, cls) { registry[tag] = cls; }, get(tag) { return registry[tag]; }, whenDefined(tag) { return Promise.resolve(registry[tag]); } },
+  },
+});
+
+const shotChart = shot => GlpOrderCard.prototype._shotChart.call(null, shot);
 
 // Values are stored *10 (matches the app's datapoint format; _shotChart
 // divides by scale=10). 20 samples each.
