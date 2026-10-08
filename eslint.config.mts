@@ -35,9 +35,12 @@ export default [
     },
   }),
   ...tseslint.config({
-    // The card's TypeScript sources (#143). src/glp-order-card.ts and src/icons.ts
-    // still carry @ts-nocheck until the typing slice of #143, so the
-    // non-type-checked recommended set is used here.
+    // The card's TypeScript sources (#143). src/glp-order-card.ts and
+    // src/icons.ts still carry @ts-nocheck until the typing slice of #143, so
+    // the non-type-checked recommended set is used here. This slice
+    // deliberately does not edit src/ at all: its GLP-SHARED / GLP-TOKENS
+    // blocks must stay byte-identical with the Shot Card, and the typing fixes
+    // belong to that later slice of #143.
     files: ['src/**/*.ts'],
     extends: [...tseslint.configs.recommended],
     languageOptions: {
