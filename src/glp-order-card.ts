@@ -294,11 +294,11 @@ class GlpOrderCard extends HTMLElement {
     // Bearer token — no Supervisor ingress session cookie required.
     if (this._useIngress() && this._hass?.fetchWithAuth) {
       const proxyPath = '/api/glp/' + path.replace(/^api\//, '');
-      return this._hass.fetchWithAuth(proxyPath, opts);
+      return this._hass!.fetchWithAuth!(proxyPath, opts);
     }
     const url = `${this._getBase()}/${path}`;
     const token = await this._ensureToken();
-    if (token) opts = { ...opts, headers: { ...(opts.headers as Record<string, string> | undefined), 'X-GLP-Token': token } };
+    if (token) opts = { ...opts, headers: { ...(opts.headers as Record<string, string>), 'X-GLP-Token': token } };
     return fetch(url, opts);
   }
 
@@ -784,7 +784,7 @@ class GlpOrderCard extends HTMLElement {
   // untagged) renders as one plain grid, no noisy "Normal" label.
   _variantInnerHtml(grouped: GroupedVariants, lang: string): TemplateResult {
     if (grouped.flat) return html`${grouped.flat.map(v => this._variantChipHtml(v))}`;
-    const { speciality, normal } = grouped;
+    const { speciality, normal } = grouped as { speciality: string[]; normal: string[] };
     const showHeadings = speciality.length > 0 && normal.length > 0;
     const specialitySection = speciality.length ? html`
       ${showHeadings ? html`<p class="menu-section-title">${_s('variant_speciality', lang)}</p>` : nothing}
