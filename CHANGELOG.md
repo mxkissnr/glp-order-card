@@ -5,6 +5,8 @@
 - **The card no longer fails with "Custom element doesn't exist" when it loads before Home Assistant's frontend has finished starting up.** `glp-order-card.js` defers its registration until HA's `home-assistant` element exists and reads the global `customElements` at that moment, so the definition lands in the registry the scoped-registry polyfill installed. Closes #145
 ### Changed
 - **The card is now built from a TypeScript source; the installed file and its behaviour are unchanged.** Part of #143
+- **The TypeScript sources now type-check under `strict`; the generated bundle is unchanged.** `src/glp-order-card.ts` and `src/icons.ts` drop `@ts-nocheck`, the Home Assistant and GLP shapes move into a new `src/types.ts`, and every strict-mode error is fixed with type-only casts and annotations that esbuild erases at build time. Part of #143
+- **The bundle build no longer depends on how `node_modules` is laid out on the build host.** The `build` script passes `--preserve-symlinks`, so a symlinked dependency tree produces the same module-path comments as a plain install; CI and the shipped file are unaffected. Part of #143
 - **The card now updates only the parts of itself that changed instead of redrawing the whole card on every Home Assistant update, so a selected drink, a typed note and any running animation survive an update.** Part of #143
 
 ## [1.21.5] – 2026-09-26
