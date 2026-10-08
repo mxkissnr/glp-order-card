@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Built as an IIFE by esbuild (see `npm run build`), so top-level declarations
 // never leak into the page scope this card shares with glp-card.js as a second
 // classic <script src> — a same-named top-level const in both files would throw
@@ -16,6 +15,11 @@ import { STYLES } from './styles.ts';
 import { _esc, _originHtml, _safeUrl, THEME_PRESETS, _validHex } from './helpers.ts';
 import { MACHINE_ICON_MINI, ICONS, _menuIconHtml } from './icons.ts';
 import { STRINGS, _s } from './i18n.ts';
+import type { TemplateResult } from 'lit';
+import type {
+  Hass, CardConfig, MenuItem, Bean, Order, Shot, QueueEta,
+  MachineEntry, ThemeStops, GroupedVariants, Rgb, ShotSeries,
+} from './types.ts';
 
 const GLP_ORDER_CARD_VERSION = '1.21.5';
 
@@ -29,6 +33,26 @@ const NEW_BADGE_DAYS_DEFAULT = 7;
 let _glpOrderCardInstanceSeq = 0;
 
 class GlpOrderCard extends HTMLElement {
+  // Instance state. `declare` keeps these type-only, so a field initializer
+  // can never change the emitted ES2022 output (#143).
+  declare _config: CardConfig | null;
+  declare _token: string | null;
+  declare _menu: MenuItem[] | null;
+  declare _enabled: boolean;
+  declare _selected: string | null;
+  declare _selectedVariant: string | null;
+  declare _selectedBeanId: number | null;
+  declare _activeBeans: Bean[] | null;
+  declare _activeOrder: Order | null;
+  declare _lastShot: Shot | null;
+  declare _pollTimer: ReturnType<typeof setTimeout> | null;
+  declare _submitting: boolean;
+  declare _queueEta: QueueEta | null;
+  declare _hassRenderTimer: ReturnType<typeof setTimeout> | null;
+  declare _lang: string;
+  declare _instanceId: number;
+  declare _hass: Hass | null;
+
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
@@ -50,7 +74,7 @@ class GlpOrderCard extends HTMLElement {
     this._instanceId = ++_glpOrderCardInstanceSeq;
   }
 
-  setConfig(config) {
+  setConfig(config: CardConfig): void {
     this._config = {
       title: null, switch_entity: null, glp_token: null, machine: null,
       theme: null, accent_color: null, accent_gradient: null, ...config,
@@ -75,16 +99,16 @@ class GlpOrderCard extends HTMLElement {
   // mxkissnr/glp-order-card#97) so both read the one resolved entry instead
   // of duplicating the lookup. Kept byte-identical between glp-card.js and
   // glp-order-card.js.
-  _appMachineEntry() {
+  _appMachineEntry(): MachineEntry | null | undefined {
     if (!this._hass) return null;
     const statusIds = Object.keys(this._hass.states).filter(id => id.endsWith('_machine_status'));
-    let machines = null;
+    let machines: MachineEntry[] | null = null;
     for (const id of statusIds) {
       const list = this._hass.states[id]?.attributes?.machines;
       if (Array.isArray(list)) { machines = list; break; }
     }
     if (!machines) return null;
-    let entry = null;
+    let entry: MachineEntry | null | undefined = null;
     if (this._config?.machine) {
       const needle = String(this._config.machine).toLowerCase();
       entry = machines.find(m =>
@@ -94,11 +118,11 @@ class GlpOrderCard extends HTMLElement {
     return entry;
   }
 
-  _appMachineTheme() {
+  _appMachineTheme(): ThemeStops | null {
     const theme = this._appMachineEntry()?.theme;
     if (!theme) return null;
     if (typeof theme.preset === 'string' && Object.prototype.hasOwnProperty.call(THEME_PRESETS, theme.preset)) {
-      return THEME_PRESETS[theme.preset];
+      return THEME_PRESETS[theme.preset as keyof typeof THEME_PRESETS];
     }
     // Inline literal regex (not each file's own HEX_COLOR_RE/_validHex) so
     // this shared block stays byte-identical regardless of what either
@@ -112,7 +136,7 @@ class GlpOrderCard extends HTMLElement {
   // Machine type ('gaggiuino' | 'gaggimate') for MACHINE_BODY/MACHINE_ICON_MINI's
   // badge shape. Defaults to 'gaggiuino' when unresolved/unrecognized, same
   // backward-compatible default MACHINE_BODY itself falls back to.
-  _appMachineType() {
+  _appMachineType(): 'gaggiuino' | 'gaggimate' {
     const type = this._appMachineEntry()?.type;
     return type === 'gaggimate' ? 'gaggimate' : 'gaggiuino';
   }
@@ -127,18 +151,18 @@ class GlpOrderCard extends HTMLElement {
   // resolveTheme() (a custom override wins over a preset). Hex values are
   // strictly validated (#rrggbb only) since they reach a style attribute/SVG
   // gradient stop.
-  _resolveTheme() {
+  _resolveTheme(): ThemeStops | null {
     const fromApp = this._appMachineTheme();
     if (fromApp) return fromApp;
     const cfg = this._config;
     if (!cfg) return null;
     if (Array.isArray(cfg.accent_gradient) && cfg.accent_gradient.length === 2) {
-      const [a, b] = cfg.accent_gradient;
+      const [a, b] = cfg.accent_gradient as [string, string];
       if (_validHex(a) && _validHex(b)) return { a, b };
     }
-    if (_validHex(cfg.accent_color)) return { a: cfg.accent_color, b: cfg.accent_color };
+    if (_validHex(cfg.accent_color)) return { a: cfg.accent_color as string, b: cfg.accent_color as string };
     if (typeof cfg.theme === 'string' && Object.prototype.hasOwnProperty.call(THEME_PRESETS, cfg.theme)) {
-      return THEME_PRESETS[cfg.theme];
+      return THEME_PRESETS[cfg.theme as keyof typeof THEME_PRESETS];
     }
     return null;
   }
@@ -160,12 +184,12 @@ class GlpOrderCard extends HTMLElement {
   // 'status' (see the .machine-glyph CSS rules), idSuffix keeps this
   // instance's two usages (header + status line, which can render
   // simultaneously) from sharing one SVG gradient id.
-  _machineGlyphHtml(sizeClass, idSuffix) {
+  _machineGlyphHtml(sizeClass: string, idSuffix: string): string {
     const id = `glp-oc-icon-${this._instanceId}-${idSuffix}`;
     return `<div class="machine-glyph ${sizeClass}">${MACHINE_ICON_MINI(id, this._appMachineType())}</div>`;
   }
 
-  _getBase() {
+  _getBase(): string | null {
     const url = this._config?.glp_url;
     if (url) {
       // _safeUrl() returns the re-serialized u.href, which for a bare origin
@@ -186,7 +210,7 @@ class GlpOrderCard extends HTMLElement {
   // right machine's switch/queue display. Falls back to the previous "first
   // *_machine_status entity" behavior when unset, so existing single-machine
   // cards are unaffected.
-  _findMachineStatusEntity() {
+  _findMachineStatusEntity(): string | null {
     if (!this._hass) return null;
     const candidates = Object.keys(this._hass.states).filter(id => id.endsWith('_machine_status'));
     if (this._config?.machine) {
@@ -198,23 +222,23 @@ class GlpOrderCard extends HTMLElement {
       const needle = String(this._config.machine).toLowerCase();
       const needleSlug = needle.replace(/\s+/g, '_');
       const matched = candidates.find(id =>
-        this._hass.states[id]?.attributes?.friendly_name?.toLowerCase().includes(needle) ||
+        (this._hass!.states[id]?.attributes?.friendly_name as string)?.toLowerCase().includes(needle) ||
         id.toLowerCase().includes(needleSlug));
       // /GLP-SHARED:machine-match v1
       if (matched) return matched;
     }
     const found = candidates.find(id =>
-      this._hass.states[id]?.attributes?.friendly_name?.toLowerCase().includes('gaggiuino'));
+      (this._hass!.states[id]?.attributes?.friendly_name as string)?.toLowerCase().includes('gaggiuino'));
     return found || candidates[0] || null;
   }
 
-  _getSwitchEntity() {
+  _getSwitchEntity(): string | null {
     if (this._config?.switch_entity) return this._config.switch_entity;
     const found = this._findMachineStatusEntity();
-    return found ? (this._hass.states[found]?.attributes?.switch_entity || null) : null;
+    return found ? ((this._hass!.states[found]?.attributes?.switch_entity as string | undefined) || null) : null;
   }
 
-  set hass(hass) {
+  set hass(hass: Hass) {
     const firstHass = !this._hass;
     this._hass = hass;
     if (firstHass && this._menu === null) {
@@ -224,7 +248,7 @@ class GlpOrderCard extends HTMLElement {
       // (entity state ticks, etc.) — 1 s is fast enough for machine on/off changes.
       // render() patches the existing DOM, so a deferred update can no longer
       // wipe an in-progress interaction; this only limits work.
-      clearTimeout(this._hassRenderTimer);
+      clearTimeout(this._hassRenderTimer as ReturnType<typeof setTimeout>);
       this._hassRenderTimer = setTimeout(() => this._render(), 1000);
     }
   }
@@ -251,55 +275,55 @@ class GlpOrderCard extends HTMLElement {
 
   _useIngress() { return !this._config?.glp_url; }
 
-  async _ensureToken() {
+  async _ensureToken(): Promise<string | null> {
     if (this._useIngress()) return null; // ingress bypasses token check
     if (this._token) return this._token;
     // /api/token is only served to Supervisor-originating requests or already-
     // authenticated callers. In direct-URL mode the card is browser-originated
     // (LAN IP) so this call will return 401. Users must set glp_token in YAML.
     try {
-      const d = await fetch(`${this._getBase()}/api/token`).then(r => r.ok ? r.json() : {});
+      const d = await fetch(`${this._getBase()}/api/token`).then(r => r.ok ? r.json() : {}) as { apiToken?: string };
       this._token = d.apiToken || null;
     } catch { /* 401 in direct-URL mode is expected; falls back to configured glp_token */ }
     return this._token;
   }
 
-  async _fetch(path, opts = {}) {
+  async _fetch(path: string, opts: RequestInit = {}): Promise<Response> {
     // In zero-config mode route through the HA integration REST proxy (/api/glp/*)
     // which the integration registers as a standard HA HTTP view, authenticated via
     // Bearer token — no Supervisor ingress session cookie required.
     if (this._useIngress() && this._hass?.fetchWithAuth) {
       const proxyPath = '/api/glp/' + path.replace(/^api\//, '');
-      return this._hass.fetchWithAuth(proxyPath, opts);
+      return this._hass!.fetchWithAuth!(proxyPath, opts);
     }
     const url = `${this._getBase()}/${path}`;
     const token = await this._ensureToken();
-    if (token) opts = { ...opts, headers: { ...opts.headers, 'X-GLP-Token': token } };
+    if (token) opts = { ...opts, headers: { ...(opts.headers as Record<string, string>), 'X-GLP-Token': token } };
     return fetch(url, opts);
   }
 
-  async _load() {
+  async _load(): Promise<void> {
     try {
       const [menuRes, settingsRes, queueRes] = await Promise.all([
         this._fetch('api/orders/menu'),
         this._fetch('api/orders/settings'),
         this._fetch('api/orders/queue-eta').catch(() => null),
       ]);
-      if (queueRes?.ok) this._queueEta = await queueRes.json().catch(() => null);
+      if (queueRes?.ok) this._queueEta = await queueRes.json().catch(() => null) as QueueEta | null;
       if (menuRes.status === 404 && settingsRes.status === 404) {
         // Feature disabled at add-on level
         this._menu    = [];
         this._enabled = false;
       } else if (menuRes.ok && settingsRes.ok) {
-        const menu     = await menuRes.json();
-        const settings = await settingsRes.json();
+        const menu     = await menuRes.json() as MenuItem[];
+        const settings = await settingsRes.json() as { enabled?: boolean };
         this._menu    = Array.isArray(menu) ? menu : [];
         this._enabled = settings?.enabled !== false;
         // Fetch active beans if any menu item uses the bean library as variants
-        if (this._menu.some(m => m.useBeans)) {
+        if (this._menu!.some(m => m.useBeans)) {
           try {
             const br = await this._fetch('api/orders/active-beans');
-            this._activeBeans = br.ok ? await br.json() : [];
+            this._activeBeans = br.ok ? await br.json() as Bean[] : [];
           } catch { this._activeBeans = []; }
         }
       }
@@ -309,7 +333,7 @@ class GlpOrderCard extends HTMLElement {
     this._render();
   }
 
-  async _loadStatus(fromLoad = false) {
+  async _loadStatus(fromLoad = false): Promise<void> {
     // If initial _load() failed (menu still null), retry the full load instead of just status
     if (!fromLoad && this._menu === null) {
       await this._load();
@@ -323,11 +347,11 @@ class GlpOrderCard extends HTMLElement {
     if (!fromLoad) {
       try {
         const sr = await this._fetch('api/orders/settings');
-        if (sr.ok) this._enabled = (await sr.json())?.enabled !== false;
+        if (sr.ok) this._enabled = (await sr.json() as { enabled?: boolean } | null)?.enabled !== false;
       } catch { /* transient poll failure, keep last known enabled state */ }
     }
     try {
-      const orders = await this._fetch(`api/orders/mine?haUserId=${encodeURIComponent(haUser.id)}`).then(r => r.json());
+      const orders = await this._fetch(`api/orders/mine?haUserId=${encodeURIComponent(haUser.id)}`).then(r => r.json()) as Order[];
       const active = orders.find(o => ['pending','accepted'].includes(o.status));
       const recent = !active ? orders.find(o => ['done','declined'].includes(o.status) && (Date.now() - (o.completedAt||0)) < 120000) : null;
       this._activeOrder = active || recent || null;
@@ -335,7 +359,7 @@ class GlpOrderCard extends HTMLElement {
         try {
           const shotId = this._activeOrder.shotId;
           const path = shotId ? `api/shots/${encodeURIComponent(shotId)}` : 'api/shots/last';
-          this._lastShot = await this._fetch(path).then(r => r.json());
+          this._lastShot = await this._fetch(path).then(r => r.json()) as Shot;
         } catch { this._lastShot = null; }
       } else if (!this._activeOrder || this._activeOrder.status !== 'done') {
         this._lastShot = null;
@@ -344,7 +368,7 @@ class GlpOrderCard extends HTMLElement {
     this._render();
   }
 
-  _machineOff() {
+  _machineOff(): boolean {
     const entity = this._getSwitchEntity();
     if (!entity || !this._hass) return false;
     const s = this._hass.states[entity];
@@ -362,34 +386,34 @@ class GlpOrderCard extends HTMLElement {
   // all work — whatever the real cascade actually produced. Split out of
   // _luminanceOf() (which now builds on it) because --glp-aline has to
   // BLEND two resolved colors, not merely compare their luminance.
-  _rgbOf(cssColor) {
+  _rgbOf(cssColor: string): Rgb | null {
     if (!cssColor) return null;
-    let rgb;
+    let rgb: string | undefined;
     try {
       const probe = document.createElement('span');
       probe.style.cssText = 'display:none';
       probe.style.color = cssColor;
-      this.shadowRoot.appendChild(probe);
+      this.shadowRoot!.appendChild(probe);
       rgb = getComputedStyle(probe).color;
       probe.remove();
     } catch { return null; }
     const m = rgb && rgb.match(/[\d.]+/g);
     if (!m || m.length < 3) return null;
-    return m.slice(0, 3).map(Number);
+    return m.slice(0, 3).map(Number) as Rgb;
   }
 
-  _luminanceOf(cssColor) {
+  _luminanceOf(cssColor: string): number | null {
     const rgb = this._rgbOf(cssColor);
     if (!rgb) return null;
     const [r, g, b] = rgb;
-    const lin = c => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+    const lin = (c: number) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
     return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
   }
 
   // Relative-luminance contrast ratio of two [r,g,b] triples, WCAG 2.x.
-  _contrastOf(rgbA, rgbB) {
-    const lum = ([r, g, b]) => {
-      const lin = c => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+  _contrastOf(rgbA: Rgb, rgbB: Rgb): number {
+    const lum = ([r, g, b]: Rgb) => {
+      const lin = (c: number) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
       return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
     };
     const a = lum(rgbA), b = lum(rgbB);
@@ -428,8 +452,8 @@ class GlpOrderCard extends HTMLElement {
     // stops equal, so this reduces to the original single-value check.
     const startLuminance = this._luminanceOf(getComputedStyle(this).getPropertyValue('--glp-accent-start').trim());
     const endLuminance    = this._luminanceOf(getComputedStyle(this).getPropertyValue('--glp-accent-end').trim());
-    const accentLuminance = [startLuminance, endLuminance].filter(v => v != null)
-      .reduce((min, v) => (min == null || v < min ? v : min), null);
+    const accentLuminance = [startLuminance, endLuminance].filter((v): v is number => v != null)
+      .reduce<number | null>((min, v) => (min == null || v < min ? v : min), null);
     if (accentLuminance != null) {
       // Pure #000/#fff at the same 0.179 split is a mathematical guarantee
       // of >=4.58:1 against ANY accent color (both text colors measure
@@ -457,24 +481,24 @@ class GlpOrderCard extends HTMLElement {
   // first step that clears 3:1 wins. Stepping rather than solving keeps the
   // result as close to the configured colour as possible: the accent should
   // still look like the machine's colour, just legible.
-  _applyAccentLineContrast() {
+  _applyAccentLineContrast(): void {
     const cs = getComputedStyle(this);
     const bg = this._rgbOf(cs.getPropertyValue('--glp-bg').trim());
     const text = this._rgbOf(cs.getPropertyValue('--glp-text').trim());
-    const stops = ['--glp-accent-start', '--glp-accent-end']
+    const stops = (['--glp-accent-start', '--glp-accent-end']
       .map(v => this._rgbOf(cs.getPropertyValue(v).trim()))
-      .filter(Boolean);
+      .filter(Boolean)) as Rgb[];
     if (!bg || !text || !stops.length) return;
     // Worst case = the stop with the lowest contrast against the background.
     const weakest = stops.reduce((worst, s) =>
-      this._contrastOf(s, bg) < this._contrastOf(worst, bg) ? s : worst, stops[0]);
+      this._contrastOf(s, bg) < this._contrastOf(worst, bg) ? s : worst, stops[0]!);
     if (this._contrastOf(weakest, bg) >= 3) {
       this.style.setProperty('--glp-aline', `rgb(${weakest.join(' ')})`);
       return;
     }
     let out = weakest;
     for (let t = 0.05; t <= 1.0001; t += 0.05) {
-      const mixed = weakest.map((c, i) => Math.round(c + (text[i] - c) * t));
+      const mixed = weakest.map((c, i) => Math.round(c + (text[i]! - c) * t)) as Rgb;
       out = mixed;
       if (this._contrastOf(mixed, bg) >= 3) break;
     }
@@ -482,13 +506,13 @@ class GlpOrderCard extends HTMLElement {
   }
   /* /GLP-SHARED:contrast v1 */
 
-  _render() {
+  _render(): void {
     if (!this._config) return;
     const lang  = this._lang;
     const title = this._config.title || _s('title', lang);
     const off   = this._machineOff();
 
-    let body;
+    let body: TemplateResult | typeof nothing;
     if (off) {
       body = html`<div class="machine-off">${_s('off', lang)}</div>`;
     } else if (!this._enabled) {
@@ -512,12 +536,12 @@ class GlpOrderCard extends HTMLElement {
           </div>
           ${body}
         </div>
-      </ha-card>`, this.shadowRoot);
+      </ha-card>`, this.shadowRoot!);
 
     this._applySemanticColorContrast();
   }
 
-  _renderOrderForm(lang) {
+  _renderOrderForm(lang: string): TemplateResult {
     if (!this._menu || this._menu.length === 0) {
       return html`<div class="loading">${_s('no_menu', lang)}</div>`;
     }
@@ -530,10 +554,10 @@ class GlpOrderCard extends HTMLElement {
       return html`<div class="loading">${_s('no_menu', lang)}</div>`;
     }
 
-    const newThreshold = (parseFloat(this._config?.new_badge_days) || NEW_BADGE_DAYS_DEFAULT) * 24 * 60 * 60 * 1000;
+    const newThreshold = (parseFloat(this._config?.new_badge_days as string) || NEW_BADGE_DAYS_DEFAULT) * 24 * 60 * 60 * 1000;
     const now = Date.now();
 
-    const renderItem = m => {
+    const renderItem = (m: MenuItem) => {
       const isNew      = m.createdAt && (now - m.createdAt) < newThreshold;
       const newBadge   = isNew ? html`<span class="menu-badge menu-badge-new">NEW</span>` : nothing;
       const trendBadge = m.trending
@@ -564,7 +588,7 @@ class GlpOrderCard extends HTMLElement {
       <div id="oc-variants" class=${groupedVariants.flat ? 'variant-grid' : ''}>
         ${this._variantInnerHtml(groupedVariants, lang)}
       </div>` : nothing;
-    const beanInfoSection = this._beanInfoHtml(this._getSelectedBean(), lang);
+    const beanInfoSection = this._beanInfoHtml(this._getSelectedBean()!, lang);
     const itemLabel = (this._selected && this._selectedVariant)
       ? `${this._selected} · ${this._selectedVariant}`
       : this._selected || null;
@@ -582,18 +606,18 @@ class GlpOrderCard extends HTMLElement {
       </div>`;
   }
 
-  _shotChart(shot) {
+  _shotChart(shot: Shot): string {
     const dp = shot?.datapoints;
     if (!dp) return '';
 
     // Series colors: the GLP-series palette (glp-card.js's buildShotChart(),
     // kept in sync via GLP-TOKENS' --glp-series-* fallback values).
-    const series = [
+    const series: ShotSeries[] = [
       { key: 'pressure',    scale: 10, axis: 'left',  color: 'var(--glp-series-pres, #0072b2)',   label: 'Druck' },
       { key: 'temperature', scale: 10, axis: 'right', color: 'var(--glp-series-temp, #c0392b)',   label: 'Temp' },
       { key: 'weightFlow',  scale: 10, axis: 'left',  color: 'var(--glp-series-flow, #c77000)',   label: 'Flow' },
       { key: 'shotWeight',  scale: 10, axis: 'right', color: 'var(--glp-series-weight, #009e73)', label: 'Gewicht' },
-    ].map(s => ({ ...s, vals: Array.isArray(dp[s.key]) ? dp[s.key].map(v => v / s.scale) : [] }))
+    ].map(s => ({ ...s, vals: Array.isArray(dp[s.key]) ? (dp[s.key] as number[]).map(v => v / s.scale) : [] }))
      .filter(s => s.vals.length >= 4);
 
     if (!series.length) return '';
@@ -611,9 +635,9 @@ class GlpOrderCard extends HTMLElement {
     const PMAX = 12;
     const tempVals = series.find(s => s.key === 'temperature')?.vals || [];
     const rMax = Math.max(110, Math.ceil(((tempVals.length ? Math.max(...tempVals) : 0) + 5) / 10) * 10);
-    const maxFor = axis => axis === 'left' ? PMAX : rMax;
+    const maxFor = (axis: string) => axis === 'left' ? PMAX : rMax;
 
-    const polyline = (s) => {
+    const polyline = (s: ShotSeries) => {
       const max = maxFor(s.axis);
       const pts = s.vals.map((v, i) => {
         const x = pad + (i / (len - 1)) * (W - pad * 2);
@@ -636,12 +660,12 @@ class GlpOrderCard extends HTMLElement {
     return svg + legend;
   }
 
-  _renderShotSummary(shot, _lang) {
+  _renderShotSummary(shot: Shot | null | undefined, _lang: string): TemplateResult | typeof nothing {
     if (!shot) return nothing;
     const profile  = shot.profile?.name || shot.profileName || '–';
     const dur      = shot.duration ? `${(shot.duration / 10).toFixed(0)} s` : null;
     const wtArr    = shot.datapoints?.shotWeight || shot.datapoints?.weight;
-    const yield_g  = Array.isArray(wtArr) && wtArr.length ? `${(wtArr[wtArr.length - 1] / 10).toFixed(1)} g` : null;
+    const yield_g  = Array.isArray(wtArr) && wtArr.length ? `${(wtArr[wtArr.length - 1]! / 10).toFixed(1)} g` : null;
     const meta     = [dur, yield_g].filter(Boolean).join(' · ');
     const chart    = this._shotChart(shot);
     return html`<div class="shot-summary">
@@ -651,7 +675,7 @@ class GlpOrderCard extends HTMLElement {
     </div>`;
   }
 
-  _renderStatus(order, lang) {
+  _renderStatus(order: Order, lang: string): TemplateResult {
     const itemLabel = order.variant ? `${order.item} · ${order.variant}` : order.item;
     // Multi-machine (#29): only shown when the order actually carries a
     // machine name — orders placed before this feature, or on a
@@ -661,11 +685,11 @@ class GlpOrderCard extends HTMLElement {
       ? html`<div class="status-line status-machine">${/* _machineGlyphHtml() returns fixed SVG markup, no user input */ unsafeHTML(this._machineGlyphHtml('status', 'stat'))}${order.machine}</div>`
       : nothing;
 
-    let content = nothing;
+    let content: TemplateResult | typeof nothing = nothing;
     if (order.status === 'pending') {
       const qp = this._queueEta?.positions?.[order.id];
       const queueLine = qp
-        ? html`<div class="status-line">${_s('queue_pos', lang, qp.position, qp.suggestedEta)}</div>`
+        ? html`<div class="status-line">${_s('queue_pos', lang, qp.position as unknown as string, qp.suggestedEta as unknown as string)}</div>`
         : nothing;
       content = html`<div class="status-card pending">
         <div class="status-item">${/* ICONS.of() emits fixed SVG markup */ unsafeHTML(ICONS.of('hourglass'))} ${_s('pending', lang, itemLabel)}</div>
@@ -676,7 +700,7 @@ class GlpOrderCard extends HTMLElement {
       const etaDone   = order.acceptedAt + order.eta * 60000;
       const minsLeft  = Math.max(0, Math.ceil((etaDone - Date.now()) / 60000));
       content = html`<div class="status-card accepted">
-        <div class="status-item">${/* ICONS.of() emits fixed SVG markup */ unsafeHTML(ICONS.of('coffee'))} ${_s('accepted', lang, itemLabel, minsLeft)}</div>
+        <div class="status-item">${/* ICONS.of() emits fixed SVG markup */ unsafeHTML(ICONS.of('coffee'))} ${_s('accepted', lang, itemLabel, minsLeft as unknown as string)}</div>
         ${machineLine}
         <div class="status-eta">${minsLeft === 0 ? html`${/* ICONS.of() emits fixed SVG markup */ unsafeHTML(ICONS.of('celebrate'))} ${_s('almost_ready', this._lang)}` : `~${minsLeft} min`}</div>
       </div>`;
@@ -698,21 +722,21 @@ class GlpOrderCard extends HTMLElement {
   // Menu item selection: toggles this._selected, resets the variant, and
   // re-renders. With Lit the DOM is patched in place, so no click-guard is
   // needed to survive a concurrent hass update.
-  _selectItem(name) {
+  _selectItem(name: string): void {
     const prev = this._selected;
     this._selected = this._selected === name ? null : name;
     if (this._selected !== prev) { this._selectedVariant = null; this._selectedBeanId = null; }
     this._render();
   }
 
-  _selectVariant(variant, beanId) {
+  _selectVariant(variant: string, beanId: number | null): void {
     const wasSelected = this._selectedVariant === variant;
     this._selectedVariant = wasSelected ? null : variant;
     this._selectedBeanId  = wasSelected ? null : (beanId != null ? Number(beanId) : null);
     this._render();
   }
 
-  _newOrder() {
+  _newOrder(): void {
     this._activeOrder     = null;
     this._selected        = null;
     this._selectedVariant = null;
@@ -720,7 +744,7 @@ class GlpOrderCard extends HTMLElement {
     this._render();
   }
 
-  _getVariants(item) {
+  _getVariants(item: MenuItem | undefined): string[] {
     if (!item) return [];
     if (item.useBeans) return (this._activeBeans || []).map(b => b.decaf ? `${b.name} · Decaf` : b.name);
     return item.variants || [];
@@ -731,9 +755,9 @@ class GlpOrderCard extends HTMLElement {
   // they stay flat/ungrouped exactly as before. Bean-backed items split into
   // speciality/normal sections using the app's `category` field (added in
   // gaggiuino-local-profiler#505) — untagged/missing beans default to 'normal'.
-  _getVariantsGrouped(item) {
+  _getVariantsGrouped(item: MenuItem | undefined): GroupedVariants {
     if (!item?.useBeans) return { flat: this._getVariants(item) };
-    const label = b => b.decaf ? `${b.name} · Decaf` : b.name;
+    const label = (b: Bean): string => b.decaf ? `${b.name} · Decaf` : b.name;
     const beans = this._activeBeans || [];
     return {
       speciality: beans.filter(b => b.category === 'speciality').map(label),
@@ -745,12 +769,12 @@ class GlpOrderCard extends HTMLElement {
   // display label, so selection can be tracked and submitted by id — the
   // label alone is ambiguous whenever a bean gets deleted and reimported
   // under the same name (same bug class as gaggiuino-local-profiler#456).
-  _beanIdForLabel(v) {
+  _beanIdForLabel(v: string): number | null {
     const bean = (this._activeBeans || []).find(b => (b.decaf ? `${b.name} · Decaf` : b.name) === v);
     return bean?.id ?? null;
   }
 
-  _variantChipHtml(v) {
+  _variantChipHtml(v: string): TemplateResult {
     const beanId = this._beanIdForLabel(v);
     return html`<div class="variant-chip${this._selectedVariant === v ? ' selected' : ''}" data-variant=${v} data-bean-id=${ifDefined(beanId ?? undefined)} @click=${() => this._selectVariant(v, beanId)}>${v}</div>`;
   }
@@ -758,9 +782,9 @@ class GlpOrderCard extends HTMLElement {
   // Mirrors the trending/regular section pattern (~line 650): headings shown
   // only when both groups are non-empty — a single-group list (e.g. all beans
   // untagged) renders as one plain grid, no noisy "Normal" label.
-  _variantInnerHtml(grouped, lang) {
+  _variantInnerHtml(grouped: GroupedVariants, lang: string): TemplateResult {
     if (grouped.flat) return html`${grouped.flat.map(v => this._variantChipHtml(v))}`;
-    const { speciality, normal } = grouped;
+    const { speciality, normal } = grouped as { speciality: string[]; normal: string[] };
     const showHeadings = speciality.length > 0 && normal.length > 0;
     const specialitySection = speciality.length ? html`
       ${showHeadings ? html`<p class="menu-section-title">${_s('variant_speciality', lang)}</p>` : nothing}
@@ -775,7 +799,7 @@ class GlpOrderCard extends HTMLElement {
   // in gaggiuino-local-profiler (lib/services/LibraryService.js, #456): the
   // id is trusted exclusively when it resolves; the label match only covers
   // the case where it doesn't (bean removed from _activeBeans mid-session).
-  _getSelectedBean() {
+  _getSelectedBean(): Bean | null {
     const selectedItem = this._menu?.find(m => m.name === this._selected);
     if (!selectedItem?.useBeans || !this._selectedVariant) return null;
     const beans = this._activeBeans || [];
@@ -786,12 +810,12 @@ class GlpOrderCard extends HTMLElement {
     return beans.find(b => (b.decaf ? `${b.name} · Decaf` : b.name) === this._selectedVariant) || null;
   }
 
-  _beanInfoHtml(bean, lang) {
+  _beanInfoHtml(bean: Bean, lang: string): TemplateResult | typeof nothing {
     const origins = Array.isArray(bean?.origins) && bean.origins.length
       ? bean.origins
       : (bean?.origin ? [{ code: bean.origin }] : []);
     if (!bean || (!bean.notes && !origins.length && !bean.variety && !bean.process)) return nothing;
-    const rows = [];
+    const rows: TemplateResult[] = [];
     if (bean.notes)      rows.push(html`<div class="bean-info-notes">${bean.notes}</div>`);
     if (origins.length)  rows.push(html`<div class="bean-info-row"><span class="bean-info-label">${_s('bean_origin', lang)}</span><span>${/* _originHtml() escapes its own input */ unsafeHTML(_originHtml(origins, lang))}</span></div>`);
     if (bean.variety) rows.push(html`<div class="bean-info-row"><span class="bean-info-label">${_s('bean_variety', lang)}</span><span>${bean.variety}</span></div>`);
@@ -799,9 +823,9 @@ class GlpOrderCard extends HTMLElement {
     return html`<div class="bean-info" id="oc-bean-info">${rows}</div>`;
   }
 
-  async _placeOrder() {
+  async _placeOrder(): Promise<void> {
     if (!this._selected || this._submitting) return;
-    const noteEl = this.shadowRoot.getElementById('oc-note');
+    const noteEl = this.shadowRoot!.getElementById('oc-note') as HTMLInputElement | null;
     const note   = noteEl?.value?.trim() || '';
     const haUser = this._hass?.user;
     if (!haUser) return;
@@ -825,7 +849,7 @@ class GlpOrderCard extends HTMLElement {
           haUserId: haUser.id,
           machine:  this._config?.machine || undefined,
         }),
-      }).then(r => r.json());
+      }).then(r => r.json()) as Order;
 
       if (order.id) {
         this._activeOrder = order;
@@ -838,7 +862,7 @@ class GlpOrderCard extends HTMLElement {
     this._render();
   }
 
-  getCardSize() { return 3; }
+  getCardSize(): number { return 3; }
 
   static getStubConfig()    { return {}; }
 }
@@ -849,7 +873,7 @@ if (customElements.get('home-assistant')) define();
 else customElements.whenDefined('home-assistant').then(define);
 
 window.customCards = window.customCards || [];
-window.customCards.push({
+window.customCards!.push({
   type:        'glp-order-card',
   name:        'GLP Order Card',
   description: 'Customer-facing order card for Gaggiuino Local Profiler',

@@ -114,10 +114,28 @@ const TRANSITIONAL = {
   // The machine-icon comment is being scrubbed of a personal name (#143) on
   // this side; the byte-identical copy in glp-lovelace-card's glp-card.js
   // follows in its own change, so the two are allowed to disagree until it
-  // lands. Remove this entry once it does.
+  // lands. Remove this entry once it does. Its annotations and the blocks
+  // below are typed here and mirrored there in the same companion typing
+  // slice of #143.
   'GLP-SHARED:machine-icon v1': {
     issue: '#143',
-    reason: 'personal-name scrub; glp-lovelace-card companion change pending',
+    reason: 'personal-name scrub; glp-lovelace-card companion change pending; typed in lockstep; glp-lovelace-card companion typing slice pending',
+  },
+  'GLP-SHARED:icons v1': {
+    issue: '#143',
+    reason: 'typed in lockstep; glp-lovelace-card companion typing slice pending',
+  },
+  'GLP-SHARED:contrast v1': {
+    issue: '#143',
+    reason: 'typed in lockstep; glp-lovelace-card companion typing slice pending',
+  },
+  'GLP-SHARED:machine-match v1': {
+    issue: '#143',
+    reason: 'typed in lockstep; glp-lovelace-card companion typing slice pending',
+  },
+  'GLP-SHARED:app-theme-lookup v1': {
+    issue: '#143',
+    reason: 'typed in lockstep; glp-lovelace-card companion typing slice pending',
   },
 };
 

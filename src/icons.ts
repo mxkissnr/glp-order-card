@@ -1,10 +1,9 @@
-// @ts-nocheck
 // Drawn icon geometry plus the menu-icon helper, split out of
 // glp-order-card.ts (#143). Both GLP-SHARED blocks below keep their
 // declarations ('const MACHINE_BODY = ...', 'const ICONS = ...') inside the
 // byte-identical marker pair compared with glp-lovelace-card's glp-card.js
-// (test/token-sync.test.js), so the file cannot be type-checked without
-// editing shared code. TODO(#143 S4): type inside shared block.
+// (test/token-sync.test.js); their parameter/return annotations are mirrored
+// into the neighbour in the companion typing slice of #143.
 
 import { _esc } from './helpers.ts';
 
@@ -28,7 +27,7 @@ import { _esc } from './helpers.ts';
 // approved machine_anim('gaggimate') panel, repositioned to sit within this
 // badge's existing `0 0 100 162` viewBox instead of that prototype's taller
 // offset viewBox (mxkissnr/glp-lovelace-card#127 / mxkissnr/glp-order-card#97).
-const MACHINE_BODY = (id, mini, type = 'gaggiuino') => `
+const MACHINE_BODY = (id: string, mini: boolean, type: string = 'gaggiuino'): string => `
     <!-- Seitenwand rechts inkl. Kantenlicht, volle Hoehe -->
     <path d="M72.2 2.3 L100 11 L100 130 L88 153 L72.2 153 Z" fill="url(#${id})"/>
     <path d="M72.2 2.3 L100 11 L100 130 L88 153 L72.2 153 Z" fill="#000" opacity=".26"/>
@@ -105,7 +104,7 @@ const MACHINE_BODY = (id, mini, type = 'gaggiuino') => `
     <ellipse cx="82.6" cy="27.3" rx="2.4" ry="6.8" fill="#3b3b43"/>
     ${mini ? '' : '<rect x="81.4" y="23.4" width="1.7" height="7.8" rx=".85" fill="#fff" opacity=".2"/>'}`}`;
 
-const MACHINE_ICON_MINI = (id, type = 'gaggiuino') => `
+const MACHINE_ICON_MINI = (id: string, type: string = 'gaggiuino'): string => `
     <svg viewBox="0 0 100 162" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="${id}" x1="6" y1="0" x2="92" y2="145" gradientUnits="userSpaceOnUse">
@@ -191,12 +190,12 @@ const GLP_ICON_PATHS = {
 };
 
 const ICONS = {
-  has: (name) => Object.prototype.hasOwnProperty.call(GLP_ICON_PATHS, name),
+  has: (name: string): boolean => Object.prototype.hasOwnProperty.call(GLP_ICON_PATHS, name),
   // Returns '' for an unknown name rather than an empty <svg>: callers fall
   // back to other content (e.g. a stored emoji on a user-created menu entry),
   // and an empty string is what makes `ICONS.of(x) || fallback` work.
-  of: (name, cls = '') => (ICONS.has(name)
-    ? `<svg class="glp-i${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${GLP_ICON_PATHS[name]}</svg>`
+  of: (name: string, cls: string = ''): string => (ICONS.has(name)
+    ? `<svg class="glp-i${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${(GLP_ICON_PATHS as Record<string, string>)[name]}</svg>`
     : ''),
 };
 // /GLP-SHARED:icons v1
@@ -211,8 +210,8 @@ const ICONS = {
 // so can never collide with the six known ones — falls back to that entry's
 // own stored emoji character, escaped the same way any other user-supplied
 // text reaching innerHTML is.
-function _menuIconHtml(item) {
-  return ICONS.of(item?.id) || _esc(item?.emoji);
+function _menuIconHtml(item: { id?: string; emoji?: string } | null | undefined): string {
+  return ICONS.of(item?.id as string) || _esc(item?.emoji);
 }
 
 export { MACHINE_BODY, MACHINE_ICON_MINI, GLP_ICON_PATHS, ICONS, _menuIconHtml };
