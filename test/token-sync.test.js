@@ -29,10 +29,20 @@ const NEIGHBOR_PATH = process.env.GLP_LOVELACE_CARD_PATH
 
 const IN_CI = !!process.env.CI;
 
-// Read the TypeScript source, not the committed bundle: esbuild strips the
+// Read the TypeScript sources, not the committed bundle: esbuild strips the
 // GLP-SHARED marker comments and rewrites top-level const to var, so the
-// byte-identical blocks can only be extracted from src/ (#143).
-const OWN_SRC = fs.readFileSync(path.join(__dirname, '..', 'src', 'glp-order-card.ts'), 'utf8');
+// byte-identical blocks can only be extracted from src/ (#143). Every src/*.ts
+// file is concatenated (sorted by name) so a block is still found after a later
+// slice moves it into its own module.
+function readSource() {
+  const dir = path.join(__dirname, '..', 'src');
+  return fs.readdirSync(dir)
+    .filter((name) => name.endsWith('.ts'))
+    .sort()
+    .map((name) => fs.readFileSync(path.join(dir, name), 'utf8'))
+    .join('\n');
+}
+const OWN_SRC = readSource();
 
 // Anchored on a short, stable prefix rather than the full marker sentence —
 // the marker's wording (it names both files) is itself part of the compared
