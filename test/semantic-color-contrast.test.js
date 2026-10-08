@@ -11,7 +11,7 @@
 // and the method's own this.style.setProperty(...) calls are inspected
 // afterward. Real color normalization (hex/named-color -> rgb()) is exactly
 // what the browser's engine does and is NOT re-implemented here — that layer
-// is covered by scripts/screenshot.mjs's real Playwright renders instead;
+// is covered by scripts/screenshot.mts's real Playwright renders instead;
 // this test only proves the luminance-decision logic itself fires correctly.
 'use strict';
 
