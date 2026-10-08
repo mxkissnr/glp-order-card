@@ -29,7 +29,10 @@ const NEIGHBOR_PATH = process.env.GLP_LOVELACE_CARD_PATH
 
 const IN_CI = !!process.env.CI;
 
-const OWN_SRC = fs.readFileSync(path.join(__dirname, '..', 'glp-order-card.js'), 'utf8');
+// Read the TypeScript source, not the committed bundle: esbuild strips the
+// GLP-SHARED marker comments and rewrites top-level const to var, so the
+// byte-identical blocks can only be extracted from src/ (#143).
+const OWN_SRC = fs.readFileSync(path.join(__dirname, '..', 'src', 'glp-order-card.ts'), 'utf8');
 
 // Anchored on a short, stable prefix rather than the full marker sentence —
 // the marker's wording (it names both files) is itself part of the compared
@@ -71,7 +74,16 @@ const BLOCKS = [
 // GLP-SHARED block is open on the neighbor repo, and empty it again in the
 // same round that companion PR merges — see #85 for the shape that cleanup
 // PR takes.
-const TRANSITIONAL = {};
+const TRANSITIONAL = {
+  // The machine-icon comment is being scrubbed of a personal name (#143) on
+  // this side; the byte-identical copy in glp-lovelace-card's glp-card.js
+  // follows in its own change, so the two are allowed to disagree until it
+  // lands. Remove this entry once it does.
+  'GLP-SHARED:machine-icon v1': {
+    issue: '#143',
+    reason: 'personal-name scrub; glp-lovelace-card companion change pending',
+  },
+};
 
 for (const [name, entry] of Object.entries(TRANSITIONAL)) {
   if (!entry || !entry.issue) {

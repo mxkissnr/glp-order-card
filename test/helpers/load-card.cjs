@@ -1,44 +1,27 @@
-/* global __dirname, console, URL */
-// Shared test loader for the root glp-order-card.js bundle (#143). The card is a
-// classic script wrapped in an IIFE, so its class and top-level helpers are not
-// reachable from outside: the vm sandbox and the customElements.define anchor
-// patch live here, so the build switch (esbuild rewrites the quote and the patch
-// would silently stop matching) only has to update one place.
+// Shared test loader for the card source (#143). The card ships as a classic
+// script bundled into an IIFE, so its class and top-level helpers are not
+// reachable from the page; the tests instead import them straight from
+// src/glp-order-card.ts, which Node loads via native type stripping. The module
+// is evaluated once per test process, so every test file calls loadCard() once.
 'use strict';
 
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
-
-const CARD_PATH = path.join(__dirname, '..', '..', 'glp-order-card.js');
-const DEFINE_ANCHOR = "customElements.define('glp-order-card', GlpOrderCard);";
-
 function loadCard({ expose = [], context = {} } = {}) {
-  const src = fs.readFileSync(CARD_PATH, 'utf8');
-  if (!src.includes(DEFINE_ANCHOR)) throw new Error(`load-card: anchor not found in ${CARD_PATH}: ${DEFINE_ANCHOR}`);
-
-  const injected = [
-    'globalThis.__GlpOrderCard = GlpOrderCard;',
-    ...expose.map((name) => `globalThis.${name} = ${name};`),
-  ].join(' ');
-  const patched = src.replace(DEFINE_ANCHOR, `${DEFINE_ANCHOR} ${injected}`);
-
-  class HTMLElement {}
-  const sandbox = {
-    HTMLElement,
+  const stubs = {
+    HTMLElement: class HTMLElement {},
     customElements: { define() {}, get() {}, whenDefined() { return new Promise(() => {}); } },
     window: {},
-    console,
-    URL,
     navigator: { language: 'en-US' },
     ...context,
   };
-  sandbox.globalThis = sandbox;
-  vm.createContext(sandbox);
-  vm.runInContext(patched, sandbox, { filename: CARD_PATH });
+  // defineProperty, not assignment: Node already defines `navigator` as a
+  // getter-only global, so a plain `globalThis.navigator = ...` would throw.
+  for (const [name, value] of Object.entries(stubs)) {
+    Object.defineProperty(globalThis, name, { value, configurable: true, writable: true });
+  }
 
-  const result = { GlpOrderCard: sandbox.__GlpOrderCard };
-  for (const name of expose) result[name] = sandbox[name];
+  const mod = require('../../src/glp-order-card.ts');
+  const result = { GlpOrderCard: mod.GlpOrderCard };
+  for (const name of expose) result[name] = mod[name];
   return result;
 }
 
