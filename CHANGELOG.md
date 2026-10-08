@@ -6,8 +6,6 @@
 ### Changed
 - **The card is now built from a TypeScript source; the installed file and its behaviour are unchanged.** Part of #143
 - **The card now updates only the parts of itself that changed instead of redrawing the whole card on every Home Assistant update, so a selected drink, a typed note and any running animation survive an update.** Part of #143
-### Chore
-- **Lint the card's TypeScript sources with `typescript-eslint` and move the dev scripts to TypeScript.** `eslint.config.js` is replaced by an ESM `eslint.config.mts`: `src/**/*.ts` is linted against the recommended set (browser globals, `@ts-nocheck` allowed, the `innerHTML` review warning kept) and `scripts/**/*.mts` plus the config itself against node globals, while the generated `glp-order-card.js` is now ignored instead of linted as a stand-in. `scripts/e2e-harness.mjs` and `scripts/screenshot.mjs` become `.mts`, run by Node's type stripping. `src/glp-order-card.ts` and `src/icons.ts` are deliberately not edited in this slice — they keep their `@ts-nocheck` and shared `GLP-SHARED`/`GLP-TOKENS` blocks until the typing slice of #143. Tooling only, no card behaviour change. Part of #143
 
 ## [1.21.5] – 2026-09-26
 ### Fixed
