@@ -1842,8 +1842,8 @@
         ${variantSection}${beanInfoSection}
         <input class="note-input" id="oc-note" placeholder=${_s("note_ph", lang)} maxlength="200">
         <button class="order-btn" id="oc-submit" ?disabled=${!this._selected || this._submitting || needsVariant} @click=${() => this._placeOrder()}>
-          ${/* ICONS.of() emits fixed SVG markup */
-      o5(ICONS.of("coffee"))} ${btnLabel}
+          ${itemLabel ? b2`${/* ICONS.of() emits fixed SVG markup */
+      o5(ICONS.of("coffee"))} ` : A}${btnLabel}
         </button>
       </div>`;
     }

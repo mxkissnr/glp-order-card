@@ -59,6 +59,8 @@ test('a menu item name and a bean note render as text, not as elements', () => {
   assert.equal(root.querySelector('script'), null, 'the bean note must not become a <script> element');
   assert.ok(root.textContent.includes(NAME_PAYLOAD), 'the menu item name is preserved as text');
   assert.ok(root.textContent.includes(NOTE_PAYLOAD), 'the bean note is preserved as text');
+  assert.ok(root.getElementById('oc-submit').querySelector('svg'),
+    'the coffee icon is on the order button once a drink is selected');
 });
 
 test('the order-form submit button is disabled until an item and variant are selected', () => {
@@ -69,4 +71,6 @@ test('the order-form submit button is disabled until an item and variant are sel
 
   const btn = card.shadowRoot.getElementById('oc-submit');
   assert.equal(btn.disabled, true);
+  assert.equal(btn.querySelector('svg'), null,
+    'the coffee icon stays off the order button while no drink is selected');
 });
