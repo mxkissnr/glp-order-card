@@ -12,7 +12,8 @@
     "isolatedModules": true,
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["node"]
   },
   "include": ["src/**/*.ts", "scripts/**/*.mts", "eslint.config.mts"]
 }
