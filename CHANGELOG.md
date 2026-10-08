@@ -4,6 +4,7 @@
 ### Fixed
 - **The card no longer fails with "Custom element doesn't exist" when it loads before Home Assistant's frontend has finished starting up.** `glp-order-card.js` defers its registration until HA's `home-assistant` element exists and reads the global `customElements` at that moment, so the definition lands in the registry the scoped-registry polyfill installed. Closes #145
 - **After a declined or finished order, "New order" now stays on the menu instead of the old order popping back a few seconds later.** Closes #169
+- **The order button's coffee icon is only shown once a drink is selected, matching the pre-migration card.** The Lit render had drawn it in every state. Part of #143
 ### Changed
 - **The card is now built from a TypeScript source; the installed file and its behaviour are unchanged.** Part of #143
 - **The TypeScript sources now type-check under `strict`; the generated bundle is unchanged.** `src/glp-order-card.ts` and `src/icons.ts` drop `@ts-nocheck`, the Home Assistant and GLP shapes move into a new `src/types.ts`, and every strict-mode error is fixed with type-only casts and annotations that esbuild erases at build time. Part of #143

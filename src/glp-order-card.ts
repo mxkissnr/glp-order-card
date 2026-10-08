@@ -603,7 +603,7 @@ class GlpOrderCard extends HTMLElement {
         ${variantSection}${beanInfoSection}
         <input class="note-input" id="oc-note" placeholder=${_s('note_ph', lang)} maxlength="200">
         <button class="order-btn" id="oc-submit" ?disabled=${!this._selected || this._submitting || needsVariant} @click=${() => this._placeOrder()}>
-          ${/* ICONS.of() emits fixed SVG markup */ unsafeHTML(ICONS.of('coffee'))} ${btnLabel}
+          ${itemLabel ? html`${/* ICONS.of() emits fixed SVG markup */ unsafeHTML(ICONS.of('coffee'))} ` : nothing}${btnLabel}
         </button>
       </div>`;
   }
