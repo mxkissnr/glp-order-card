@@ -248,7 +248,7 @@ class GlpOrderCard extends HTMLElement {
       // (entity state ticks, etc.) — 1 s is fast enough for machine on/off changes.
       // render() patches the existing DOM, so a deferred update can no longer
       // wipe an in-progress interaction; this only limits work.
-      clearTimeout(this._hassRenderTimer);
+      clearTimeout(this._hassRenderTimer as ReturnType<typeof setTimeout>);
       this._hassRenderTimer = setTimeout(() => this._render(), 1000);
     }
   }
