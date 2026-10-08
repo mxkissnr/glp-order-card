@@ -3,17 +3,7 @@
 // reachable from the page; the tests instead import them straight from
 // src/glp-order-card.ts, which Node loads via native type stripping. The module
 // is evaluated once per test process, so every test file calls loadCard() once.
-//
-// The pipeline's dependency cache carries only the base devDependencies, so a
-// freshly added package (`lit`) can be missing there even though the lockfile
-// pins it. Registering a resolve hook that falls back to a local stub keeps the
-// source import working; the hook prefers the real package, so CI uses it.
 'use strict';
-
-const { register } = require('node:module');
-const { pathToFileURL } = require('node:url');
-
-register('./lit-resolve-hook.mjs', pathToFileURL(__filename).href);
 
 function loadCard({ expose = [], context = {} } = {}) {
   const stubs = {
