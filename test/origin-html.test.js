@@ -1,5 +1,5 @@
-// Loads the real glp-order-card.js source into a sandboxed vm context (same
-// approach as security-helpers.test.js) and exercises the real _originHtml()
+// Loads the real glp-order-card.js through the shared
+// test/helpers/load-card.cjs harness and exercises the real _originHtml()
 // function shipped in the card, not a re-implementation. Covers #28: origins[]
 // (blend beans, multiple countries) rendering alongside the legacy
 // single-origin fallback.
@@ -7,37 +7,9 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
+const { loadCard } = require('./helpers/load-card.cjs');
 
-function loadCardHelpers() {
-  let src = fs.readFileSync(path.join(__dirname, '..', 'glp-order-card.js'), 'utf8');
-  // #114: glp-order-card.js is wrapped in an IIFE (see security-helpers.test.js).
-  src = src.replace(
-    "customElements.define('glp-order-card', GlpOrderCard);",
-    "customElements.define('glp-order-card', GlpOrderCard); globalThis._originHtml = _originHtml;"
-  );
-
-  class HTMLElement {}
-
-  const context = {
-    HTMLElement,
-    customElements: { define() {}, get() {}, whenDefined() { return new Promise(() => {}); } },
-    window: {},
-    console,
-    URL,
-    Intl,
-    navigator: { language: 'en-US' },
-  };
-  context.globalThis = context;
-  vm.createContext(context);
-  vm.runInContext(src, context, { filename: path.join(__dirname, '..', 'glp-order-card.js') });
-
-  return { originHtml: context._originHtml };
-}
-
-const { originHtml } = loadCardHelpers();
+const { _originHtml: originHtml } = loadCard({ expose: ['_originHtml'] });
 
 test('_originHtml() renders a single ISO code as the localized country name', () => {
   assert.equal(originHtml([{ code: 'BR' }], 'en'), 'Brazil');
