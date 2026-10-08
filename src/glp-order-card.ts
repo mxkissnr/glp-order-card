@@ -409,7 +409,7 @@ class GlpOrderCard extends HTMLElement {
   // ratios behind all four). Sets the winning values as an inline style on
   // the host, which always outranks the plain :host declarations in STYLES
   // regardless of any stylesheet/media-query state. Called from _render()
-  // right after the templates are applied, so the :host rules exist.
+  // right after the shadow DOM (and its :host rules) are rebuilt.
   _applySemanticColorContrast() {
     const bgLuminance = this._luminanceOf(getComputedStyle(this).getPropertyValue('--glp-bg').trim());
     if (bgLuminance != null) {
