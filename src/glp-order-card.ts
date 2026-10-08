@@ -87,7 +87,7 @@ class GlpOrderCard extends HTMLElement {
   // out of `hass` state's `machines[]` array, or null when unavailable (no
   // app-side sync yet, e.g. this card's zero-config/standalone mode).
   // glp-integration forwards every machine's attributes verbatim off the
-  // app's GET /api/status `machines[]` (gaggiuino-local-profiler#701) — any
+  // app's GET /api/status `machines[]` (gaggiuino-local-profiler#701): any
   // `*_machine_status`-suffixed entity carries the WHOLE array (every
   // machine, not just the default one) as its `machines` attribute, so any
   // one such entity is enough regardless of which machine this card
