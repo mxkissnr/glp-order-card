@@ -50,11 +50,11 @@ Include:
 
 | Area | Details |
 |---|---|
-| File | Single JS file `glp-order-card.js` — no build step, no bundler |
+| File | TypeScript source `src/glp-order-card.ts`, built by esbuild into the committed root `glp-order-card.js` (HACS serves that file directly) |
 | Style | Vanilla ES2020, Web Components (`HTMLElement` + Shadow DOM) |
 | Backend | Communicates with GLP app `/api/orders/*` and `/api/menu` endpoints |
-| Testing | Load the card as a HACS custom resource with `enable_orders: true` in the app config |
+| Testing | `npm run lint`, `npm run typecheck`, `npm test` and `npm run build`; load the card as a HACS custom resource with `enable_orders: true` in the app config |
 
 ## Versioning
 
-`MAJOR.MINOR.PATCH` — update the `GLP_ORDER_CARD_VERSION` constant at the top of `glp-order-card.js`.
+`MAJOR.MINOR.PATCH` — update the `GLP_ORDER_CARD_VERSION` constant at the top of `src/glp-order-card.ts`.

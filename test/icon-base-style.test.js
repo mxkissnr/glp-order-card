@@ -14,7 +14,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const SRC = fs.readFileSync(path.join(__dirname, '..', 'glp-order-card.js'), 'utf8');
+// Read the TypeScript source, not the committed bundle: esbuild rewrites
+// top-level const to var and drops the GLP-SHARED marker comments, so these
+// static checks can only match src/ (#143).
+const SRC = fs.readFileSync(path.join(__dirname, '..', 'src', 'glp-order-card.ts'), 'utf8');
 
 // Matches the BASE rule only. Anchoring on the line start with nothing but
 // indentation in front is what excludes a contextual override like

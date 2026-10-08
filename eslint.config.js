@@ -14,7 +14,9 @@ const commonRules = {
 
 module.exports = [
   {
-    ignores: ['node_modules/**', 'docs/**', 'graphify-out/**'],
+    // src/** is TypeScript; TS-aware linting of it follows in a later slice of
+    // #143. For now only the generated bundle it builds is linted.
+    ignores: ['node_modules/**', 'docs/**', 'graphify-out/**', 'src/**'],
   },
   js.configs.recommended,
   {
@@ -31,7 +33,7 @@ module.exports = [
     rules: commonRules,
   },
   {
-    files: ['test/**/*.js', 'test/**/*.mjs'],
+    files: ['test/**/*.js', 'test/**/*.mjs', 'test/helpers/**/*.cjs'],
     languageOptions: {
       globals: globals.node,
     },
@@ -42,6 +44,12 @@ module.exports = [
     languageOptions: {
       globals: globals.browser,
     },
-    rules: commonRules,
+    rules: {
+      ...commonRules,
+      // The generated bundle is built from src/ with esbuild, which strips the
+      // explanatory comment inside the source's otherwise-empty catch blocks —
+      // making those catch bodies lint as empty. Allow empty catch here.
+      'no-empty': ['error', { allowEmptyCatch: true }],
+    },
   },
 ];
