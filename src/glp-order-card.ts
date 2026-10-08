@@ -86,7 +86,7 @@ function _validHex(s) {
 
 // GLP-SHARED:machine-icon v1 — approved detailed Gaggia Classic icon
 // geometry (mxkissnr/glp-lovelace-card#87 / mxkissnr/glp-order-card#62),
-// ported faithfully from the Theme Lab mockup Max approved (see
+// ported faithfully from the Theme Lab mockup the maintainer approved (see
 // ICON-AND-THEMES-SPEC.js in the glp-project workspace) and kept in sync
 // with glp-order-card.js's copy. `id` is a per-render-instance-unique
 // gradient id (this card can appear more than once on one dashboard — each
