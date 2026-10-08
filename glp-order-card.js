@@ -1357,6 +1357,7 @@
       this._selectedBeanId = null;
       this._activeBeans = null;
       this._activeOrder = null;
+      this._dismissedOrderId = null;
       this._lastShot = null;
       this._pollTimer = null;
       this._submitting = false;
@@ -1617,7 +1618,7 @@
       try {
         const orders = await this._fetch(`api/orders/mine?haUserId=${encodeURIComponent(haUser.id)}`).then((r4) => r4.json());
         const active = orders.find((o7) => ["pending", "accepted"].includes(o7.status));
-        const recent = !active ? orders.find((o7) => ["done", "declined"].includes(o7.status) && Date.now() - (o7.completedAt || 0) < 12e4) : null;
+        const recent = !active ? orders.find((o7) => ["done", "declined"].includes(o7.status) && o7.id !== this._dismissedOrderId && Date.now() - (o7.completedAt || 0) < 12e4) : null;
         this._activeOrder = active || recent || null;
         if (this._activeOrder?.status === "done" && !this._lastShot) {
           try {
@@ -1954,6 +1955,7 @@
       this._render();
     }
     _newOrder() {
+      this._dismissedOrderId = this._activeOrder?.id ?? null;
       this._activeOrder = null;
       this._selected = null;
       this._selectedVariant = null;
