@@ -17,11 +17,11 @@ function loadCard({ expose = [], context = {} } = {}) {
   const src = fs.readFileSync(CARD_PATH, 'utf8');
   if (!src.includes(DEFINE_ANCHOR)) throw new Error(`load-card: anchor not found in ${CARD_PATH}: ${DEFINE_ANCHOR}`);
 
-  const symbols = ['__GlpOrderCard', ...expose];
-  const patched = src.replace(
-    DEFINE_ANCHOR,
-    `${DEFINE_ANCHOR} ${symbols.map((name) => `globalThis.${name} = ${name};`).join(' ')}`
-  );
+  const injected = [
+    'globalThis.__GlpOrderCard = GlpOrderCard;',
+    ...expose.map((name) => `globalThis.${name} = ${name};`),
+  ].join(' ');
+  const patched = src.replace(DEFINE_ANCHOR, `${DEFINE_ANCHOR} ${injected}`);
 
   class HTMLElement {}
   const sandbox = {
