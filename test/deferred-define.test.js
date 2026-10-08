@@ -54,8 +54,9 @@ function loadCard(customElements) {
     HTMLElement,
     customElements,
     window: {},
-    // The committed bundle inlines Lit's browser build, which reads
-    // `document` (and its createTreeWalker) while loading. No render runs here.
+    // The committed bundle inlines Lit's runtime, which calls
+    // document.createTreeWalker while its module graph loads. This stub is
+    // required by Lit itself, not a missing-package shim; no render runs here.
     document: { createTreeWalker() { return {}; } },
     console: { info() {} },
     URL,
