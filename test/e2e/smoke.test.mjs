@@ -1,21 +1,21 @@
 // Minimal Playwright E2E smoke test (#48). Reuses the static-server/mock-API
-// harness from scripts/e2e-harness.mjs (shared with scripts/screenshot.mjs)
+// harness from scripts/e2e-harness.mts (shared with scripts/screenshot.mts)
 // to render the real glp-order-card.js in a headless Chromium tab — not a
 // vm sandbox — so it can exercise real DOM events and timing.
 //
 // Covers two things pure vm-sandboxed unit tests structurally cannot: (1)
-// the optimistic-UI guard (_clickBlocked/_pendingRender, set hass()) that
-// protects an in-progress user selection from being wiped out by a
-// concurrently-arriving `hass` update, and (2) that a switch entity going
-// 'unavailable' (_machineOff(), glp-order-card.js) actually renders the
-// defined machine-off state end-to-end rather than throwing. Run via
+// that an in-progress selection survives a concurrently-arriving `hass`
+// update (Lit patches the existing DOM in place instead of rebuilding it),
+// and (2) that a switch entity going 'unavailable' (_machineOff(),
+// glp-order-card.js) actually renders the defined machine-off state
+// end-to-end rather than throwing. Run via
 // `npm test` (node --test auto-discovers test/**/*.test.mjs).
 'use strict';
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
-import { startServer, mockApi } from '../../scripts/e2e-harness.mjs';
+import { startServer, mockApi } from '../../scripts/e2e-harness.mts';
 
 function harnessHtml(switchState = 'on') {
   return `<!doctype html>
@@ -116,9 +116,9 @@ test('a concurrent hass update does not reset an in-progress variant selection',
       return !!el?.shadowRoot?.querySelector('.variant-chip');
     }, { timeout: 5000 });
 
-    // Simulate the race the _clickBlocked guard exists for: a `hass` push
-    // arrives between pointerdown (which sets _clickBlocked, blocking any
-    // render from tearing down the DOM mid-click) and the click itself.
+    // Simulate the race the old innerHTML rebuild used to lose: a `hass`
+    // push arrives between the pointerdown and the click. With Lit's
+    // in-place render the selection below must still survive.
     await page.evaluate(() => {
       const el = document.querySelector('glp-order-card');
       const chip = el.shadowRoot.querySelector('.variant-chip');

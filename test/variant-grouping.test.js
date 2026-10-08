@@ -1,34 +1,14 @@
 // Bean speciality/normal grouping tests (#36). Loads the real
-// glp-order-card.js into a sandboxed vm context (same approach as
-// machine-config.test.js) and exposes the GlpOrderCard class via a
-// test-only source patch so _getVariantsGrouped() can be exercised directly.
+// glp-order-card.js through the shared test/helpers/load-card.cjs harness,
+// which exposes the GlpOrderCard class via a test-only source patch, so
+// _getVariantsGrouped() can be exercised directly.
 'use strict';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
+const { loadCard } = require('./helpers/load-card.cjs');
 
-function loadGlpOrderCard() {
-  let src = fs.readFileSync(path.join(__dirname, '..', 'glp-order-card.js'), 'utf8');
-  src = src.replace(
-    "customElements.define('glp-order-card', GlpOrderCard);",
-    "customElements.define('glp-order-card', GlpOrderCard); globalThis.__GlpOrderCard = GlpOrderCard;"
-  );
-
-  class HTMLElement {}
-  const context = {
-    HTMLElement, customElements: { define() {}, get() {}, whenDefined() { return new Promise(() => {}); } }, window: {}, console, URL,
-    navigator: { language: 'en-US' },
-  };
-  context.globalThis = context;
-  vm.createContext(context);
-  vm.runInContext(src, context, { filename: path.join(__dirname, '..', 'glp-order-card.js') });
-  return context.__GlpOrderCard;
-}
-
-const GlpOrderCard = loadGlpOrderCard();
+const { GlpOrderCard } = loadCard();
 
 function makeInstance({ activeBeans } = {}) {
   const inst = Object.create(GlpOrderCard.prototype);

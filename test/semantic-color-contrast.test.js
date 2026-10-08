@@ -2,23 +2,22 @@
 // --glp-ok/--glp-warn/--glp-err (by --glp-bg luminance) and --glp-accent-text
 // (by the DARKER of --glp-accent-start/--glp-accent-end's luminance,
 // independently — see #62's machine colour theme) — not just that the
-// method exists. Loads the real glp-order-card.js into a
-// sandboxed vm context with a minimal fake DOM (style objects backed by a
-// plain Map, no real CSS engine) sufficient to drive the method end-to-end:
+// method exists. Loads the real glp-order-card.js through the shared
+// test/helpers/load-card.cjs harness with a minimal fake DOM (style objects
+// backed by a plain Map, no real CSS engine) sufficient to drive the method
+// end-to-end:
 // getComputedStyle(this).getPropertyValue('--glp-bg') reads back a
 // pre-seeded value simulating what the real CSS cascade would have resolved,
 // and the method's own this.style.setProperty(...) calls are inspected
 // afterward. Real color normalization (hex/named-color -> rgb()) is exactly
 // what the browser's engine does and is NOT re-implemented here — that layer
-// is covered by scripts/screenshot.mjs's real Playwright renders instead;
+// is covered by scripts/screenshot.mts's real Playwright renders instead;
 // this test only proves the luminance-decision logic itself fires correctly.
 'use strict';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
+const { loadCard } = require('./helpers/load-card.cjs');
 
 function makeStyleStub() {
   const props = new Map();
@@ -32,48 +31,41 @@ function makeStyleStub() {
   };
 }
 
-function loadCard() {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'glp-order-card.js'), 'utf8');
-
-  class HTMLElement {
-    constructor() { this.style = makeStyleStub(); }
-    attachShadow() {
-      this.shadowRoot = {
-        appendChild() {},
-        innerHTML: '',
-        getElementById() { return null; },
-        querySelectorAll() { return []; },
-      };
-      return this.shadowRoot;
-    }
+class HTMLElement {
+  constructor() { this.style = makeStyleStub(); }
+  attachShadow() {
+    this.shadowRoot = {
+      appendChild() {},
+      innerHTML: '',
+      getElementById() { return null; },
+      querySelectorAll() { return []; },
+    };
+    return this.shadowRoot;
   }
-
-  const fakeDocument = {
-    createElement() { return { style: makeStyleStub(), remove() {} }; },
-  };
-
-  // `class GlpOrderCard {}` is a lexical (let-like) declaration, so it never
-  // becomes a property of the vm context's global object the way a
-  // `function` declaration would — capture the real class reference via the
-  // customElements.define() call the file makes at module top level instead.
-  const registry = { 'home-assistant': class extends HTMLElement {} };
-  const context = {
-    HTMLElement,
-    customElements: { define(tag, cls) { registry[tag] = cls; }, get(tag) { return registry[tag]; }, whenDefined(tag) { return Promise.resolve(registry[tag]); } },
-    window: {},
-    document: fakeDocument,
-    getComputedStyle(el) { return el.style; },
-    console,
-    URL,
-    navigator: { language: 'en-US' },
-  };
-  vm.createContext(context);
-  vm.runInContext(src, context, { filename: path.join(__dirname, '..', 'glp-order-card.js') });
-
-  return registry['glp-order-card'];
 }
 
-const GlpOrderCard = loadCard();
+const fakeDocument = {
+  createElement() { return { style: makeStyleStub(), remove() {} }; },
+  // Lit calls document.createTreeWalker while it is imported. This stub is
+  // required by Lit itself, not a missing-package shim; this test never calls
+  // render(), so the rest of the DOM surface is not needed.
+  createTreeWalker() { return {}; },
+};
+
+// The shared helper injects the real `class GlpOrderCard` reference after the
+// customElements.define() anchor — a lexical class declaration never becomes a
+// property of the vm context's global object the way a `function` declaration
+// would — so it can be reused as-is. The registry-capturing customElements stub
+// is kept so define() still sees the real class.
+const registry = { 'home-assistant': class extends HTMLElement {} };
+const { GlpOrderCard } = loadCard({
+  context: {
+    HTMLElement,
+    document: fakeDocument,
+    getComputedStyle(el) { return el.style; },
+    customElements: { define(tag, cls) { registry[tag] = cls; }, get(tag) { return registry[tag]; }, whenDefined(tag) { return Promise.resolve(registry[tag]); } },
+  },
+});
 
 test('_applySemanticColorContrast() picks the light-safe constants for a white --glp-bg', () => {
   const card = new GlpOrderCard();

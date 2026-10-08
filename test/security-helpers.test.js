@@ -1,46 +1,20 @@
-// Loads the real glp-order-card.js source into a sandboxed vm context
-// (stubbing only the browser globals it touches at top level: customElements,
-// window, console) and pulls the actual _esc()/_safeUrl() function
-// declarations out of it — so these tests exercise the shipped code, not a
+// Loads the real glp-order-card.js through the shared test/helpers/load-card.cjs
+// harness (which stubs only the browser globals it touches at top level:
+// customElements, window, console) and pulls the actual _esc()/_safeUrl()
+// functions out of it — so these tests exercise the shipped code, not a
 // re-implementation. glp-order-card.js stays a single, build-step-free file;
 // nothing here changes how it loads in HA.
 'use strict';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
+const { loadCard } = require('./helpers/load-card.cjs');
 
-function loadCardHelpers() {
-  let src = fs.readFileSync(path.join(__dirname, '..', 'glp-order-card.js'), 'utf8');
-  // #114: glp-order-card.js is wrapped in an IIFE to avoid a top-level const
-  // collision with the bundled glp-card.js, so _esc()/_safeUrl() no longer
-  // auto-attach to the vm context's global object — expose them explicitly
-  // for this test, same injection approach as __GlpOrderCard elsewhere.
-  src = src.replace(
-    "customElements.define('glp-order-card', GlpOrderCard);",
-    "customElements.define('glp-order-card', GlpOrderCard); globalThis._esc = _esc; globalThis._safeUrl = _safeUrl;"
-  );
-
-  class HTMLElement {}
-
-  const context = {
-    HTMLElement,
-    customElements: { define() {}, get() {}, whenDefined() { return new Promise(() => {}); } },
-    window: {},
-    console,
-    URL,
-    navigator: { language: 'en-US' },
-  };
-  context.globalThis = context;
-  vm.createContext(context);
-  vm.runInContext(src, context, { filename: path.join(__dirname, '..', 'glp-order-card.js') });
-
-  return { esc: context._esc, safeUrl: context._safeUrl };
-}
-
-const { esc, safeUrl } = loadCardHelpers();
+// #114: glp-order-card.js is wrapped in an IIFE to avoid a top-level const
+// collision with the bundled glp-card.js, so _esc()/_safeUrl() no longer
+// auto-attach to the sandbox's global object — the shared helper exposes them
+// explicitly for this test, same injection approach as __GlpOrderCard elsewhere.
+const { _esc: esc, _safeUrl: safeUrl } = loadCard({ expose: ['_esc', '_safeUrl'] });
 
 test('_esc() escapes HTML special characters', () => {
   assert.equal(esc('<script>alert(1)</script>'), '&lt;script&gt;alert(1)&lt;/script&gt;');

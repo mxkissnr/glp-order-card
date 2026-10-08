@@ -38,7 +38,16 @@ jobs:
         # no full checkout, so it can live outside github.workspace where
         # node --test's default recursive discovery would otherwise pick up
         # glp-lovelace-card's own test suite.
-        run: curl -fsSL -o "${{ runner.temp }}/glp-card.js" https://raw.githubusercontent.com/mxkissnr/glp-lovelace-card/main/glp-card.js
+        # Since glp-lovelace-card#180 its root file is an esbuild bundle without
+        # the GLP-SHARED markers; the blocks live in src/*.ts. Use those when
+        # main has them, the root file otherwise.
+        run: |
+          git clone -q --depth 1 https://github.com/mxkissnr/glp-lovelace-card "${{ runner.temp }}/glp-lovelace-card-main"
+          if [ -d "${{ runner.temp }}/glp-lovelace-card-main/src" ]; then
+            cat "${{ runner.temp }}"/glp-lovelace-card-main/src/*.ts > "${{ runner.temp }}/glp-card.js"
+          else
+            cp "${{ runner.temp }}/glp-lovelace-card-main/glp-card.js" "${{ runner.temp }}/glp-card.js"
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -71,10 +80,17 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Typecheck
+        run: npm run typecheck
+
       - name: Run tests
         run: npm run test:coverage
         env:
           GLP_LOVELACE_CARD_PATH: ${{ runner.temp }}/glp-card.js
 
-      - name: Build check (syntax)
-        run: npm run build
+      - name: Build and check the committed bundle
+        # glp-order-card.js is generated from src/ and committed (#143); a
+        # bundle that no longer matches its source fails here.
+        run: |
+          npm run build
+          git diff --exit-code glp-order-card.js || { echo "::error::glp-order-card.js is out of date, run npm run build and commit it"; exit 1; }

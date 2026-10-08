@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [1.22.0] – 2026-10-08
+### Fixed
+- **After a declined or finished order, "New order" now stays on the menu instead of the old order popping back a few seconds later.** Closes #169
+### Changed
+- **The card is now built from a TypeScript source; the installed file and its behaviour are unchanged.** Part of #143
+- **The TypeScript sources are now fully type-checked and the bundle build produces the same file on any machine; the generated bundle is unchanged.** Part of #143
+- **The card now updates only the parts of itself that changed instead of redrawing the whole card on every Home Assistant update, so a selected drink, a typed note and any running animation survive an update.** Part of #143
+
 ## [1.21.5] – 2026-09-26
 ### Fixed
 - **The card no longer fails with "Custom element doesn't exist" when it loads before Home Assistant's frontend has finished starting up.** Closes #145
@@ -200,7 +208,7 @@ No changes to the card's runtime behavior — this release is CI/tooling hardeni
 
 ## [1.3.7] – 2026-05-26
 ### Fixed
-- `hass.fetchWithAuth` expects a path (`/api/hassio_ingress/...`), not a full URL — passing the absolute URL caused the HA origin to be prepended twice (`https://ha.kissner.prohttps//...`), triggering a CORS error; now extracts `pathname + search` from the URL before passing to `fetchWithAuth`; closes #8
+- `hass.fetchWithAuth` expects a path (`/api/hassio_ingress/...`), not a full URL — passing the absolute URL caused the HA origin to be prepended twice (`https://ha.example.comhttps//...`), triggering a CORS error; now extracts `pathname + search` from the URL before passing to `fetchWithAuth`; closes #8
 
 ## [1.3.6] – 2026-05-26
 ### Fixed

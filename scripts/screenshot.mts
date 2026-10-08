@@ -24,18 +24,19 @@
 // `--out=<path>` overrides the output file (default docs/screenshots/card.png,
 // or card-light.png when --ha-theme=light).
 //
-// Run: node scripts/screenshot.mjs
+// Run: node scripts/screenshot.mts
 // Requires: npm install --save-dev playwright && npx playwright install chromium
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
-import { repoRoot, startServer, mockApi } from './e2e-harness.mjs';
+import { repoRoot, startServer, mockApi } from './e2e-harness.mts';
 
-function flag(name, envVar, fallback) {
+function flag(name: string, envVar: string, fallback: string): string {
   const eq = process.argv.find(a => a.startsWith(`--${name}=`));
-  if (eq) return eq.split('=')[1];
-  if (envVar && process.env[envVar]) return process.env[envVar];
+  if (eq) return eq.slice(eq.indexOf('=') + 1);
+  const value = process.env[envVar];
+  if (value) return value;
   return fallback;
 }
 
@@ -132,12 +133,13 @@ const ACTIVE_BEANS = [
   { name: 'Bombe', origin: 'BR', variety: 'Bourbon, Catuai', process: 'Natural', notes: 'Schokolade, Nougat, Karamell', decaf: false },
 ];
 
-async function main() {
+async function main(): Promise<void> {
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
 
   const server = await startServer(HARNESS_HTML);
-  const { port } = server.address();
-  const baseUrl = `http://127.0.0.1:${port}`;
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('screenshot: server has no TCP address');
+  const baseUrl = `http://127.0.0.1:${address.port}`;
 
   const browser = await chromium.launch();
   // colorScheme is intentionally independent from HA_THEME/THEME_VARS — the
@@ -156,7 +158,7 @@ async function main() {
   // The page.evaluate()/waitForFunction() callbacks below run inside the
   // browser tab via Playwright, not in this Node process — `document` is a
   // real global there, even though ESLint's static analysis (correctly, for
-  // a .mjs Node script) doesn't know that.
+  // a .mts Node script) doesn't know that.
   /* eslint-disable no-undef */
 
   // Wait for the menu grid to actually render inside the shadow DOM.
@@ -170,9 +172,11 @@ async function main() {
   // layout inside the shadow root to match production sizing.
   await page.evaluate(() => {
     const el = document.querySelector('glp-order-card');
+    const root = el?.shadowRoot;
+    if (!root) return;
     const style = document.createElement('style');
     style.textContent = 'ha-card { display: block; }';
-    el.shadowRoot.appendChild(style);
+    root.appendChild(style);
   });
 
   // Select the bean-library item + a variant so the demo shows off the
@@ -180,8 +184,8 @@ async function main() {
   // than just the bare menu grid.
   await page.evaluate(() => {
     const el = document.querySelector('glp-order-card');
-    const item = [...el.shadowRoot.querySelectorAll('.menu-item')]
-      .find(m => m.dataset.item === 'Filterkaffee');
+    const items = el?.shadowRoot?.querySelectorAll<HTMLElement>('.menu-item');
+    const item = items && [...items].find(m => m.dataset.item === 'Filterkaffee');
     item?.click();
   });
   await page.waitForFunction(() => {
@@ -190,7 +194,7 @@ async function main() {
   }, { timeout: 5000 });
   await page.evaluate(() => {
     const el = document.querySelector('glp-order-card');
-    const chip = el.shadowRoot.querySelector('.variant-chip');
+    const chip = el?.shadowRoot?.querySelector<HTMLElement>('.variant-chip');
     chip?.click();
   });
   await page.waitForFunction(() => {
