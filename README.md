@@ -41,7 +41,7 @@ The card follows your Home Assistant theme (light or dark) and keeps text readab
   <img src="docs/screenshots/card-dark-accent.png" alt="GLP Order Card with a dark HA primary/accent color, showing automatic text contrast on the order button" width="360"/>
 </p>
 
-Regenerated on demand via `node scripts/screenshot.mjs` (demo data, no real backend required).
+Regenerated on demand via `node scripts/screenshot.mts` (demo data, no real backend required).
 
 ---
 

@@ -1,5 +1,5 @@
 // Minimal Playwright E2E smoke test (#48). Reuses the static-server/mock-API
-// harness from scripts/e2e-harness.mjs (shared with scripts/screenshot.mjs)
+// harness from scripts/e2e-harness.mts (shared with scripts/screenshot.mts)
 // to render the real glp-order-card.js in a headless Chromium tab — not a
 // vm sandbox — so it can exercise real DOM events and timing.
 //
@@ -15,7 +15,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
-import { startServer, mockApi } from '../../scripts/e2e-harness.mjs';
+import { startServer, mockApi } from '../../scripts/e2e-harness.mts';
 
 function harnessHtml(switchState = 'on') {
   return `<!doctype html>
