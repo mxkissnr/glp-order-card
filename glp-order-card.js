@@ -402,9 +402,7 @@
   }
 `;
 
-  // src/glp-order-card.ts
-  var GLP_ORDER_CARD_VERSION = "1.21.5";
-  var NEW_BADGE_DAYS_DEFAULT = 7;
+  // src/helpers.ts
   function _esc(s) {
     if (s == null) return "";
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -445,6 +443,8 @@
   function _validHex(s) {
     return typeof s === "string" && /^#[0-9a-fA-F]{6}$/.test(s);
   }
+
+  // src/icons.ts
   var MACHINE_BODY = (id, mini, type = "gaggiuino") => `
     <!-- Seitenwand rechts inkl. Kantenlicht, volle Hoehe -->
     <path d="M72.2 2.3 L100 11 L100 130 L88 153 L72.2 153 Z" fill="url(#${id})"/>
@@ -586,7 +586,8 @@
   function _menuIconHtml(item) {
     return ICONS.of(item?.id) || _esc(item?.emoji);
   }
-  var _glpOrderCardInstanceSeq = 0;
+
+  // src/i18n.ts
   var STRINGS = {
     de: {
       title: "Bestellen",
@@ -756,6 +757,11 @@
     const val = tr[key] ?? STRINGS.en[key] ?? key;
     return typeof val === "function" ? val(...args) : val;
   }
+
+  // src/glp-order-card.ts
+  var GLP_ORDER_CARD_VERSION = "1.21.5";
+  var NEW_BADGE_DAYS_DEFAULT = 7;
+  var _glpOrderCardInstanceSeq = 0;
   var GlpOrderCard = class extends HTMLElement {
     constructor() {
       super();
