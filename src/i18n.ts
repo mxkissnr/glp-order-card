@@ -30,6 +30,9 @@ export const STRINGS: Record<string, Record<string, StringEntry>> = {
     loading: 'Lade …',
     no_menu: 'Noch kein Menü konfiguriert',
     menu_all: 'Alle Getränke',
+    order_failed: 'Bestellung konnte nicht gesendet werden. Bitte erneut versuchen.',
+    chart_pressure: 'Druck',
+    chart_weight: 'Gewicht',
   },
   en: {
     title: 'Order',
@@ -57,6 +60,9 @@ export const STRINGS: Record<string, Record<string, StringEntry>> = {
     loading: 'Loading …',
     no_menu: 'No menu configured yet',
     menu_all: 'All drinks',
+    order_failed: 'Order could not be sent. Please try again.',
+    chart_pressure: 'Pressure',
+    chart_weight: 'Weight',
   },
   it: {
     title: 'Ordina',
@@ -84,6 +90,9 @@ export const STRINGS: Record<string, Record<string, StringEntry>> = {
     loading: 'Caricamento …',
     no_menu: 'Nessun menu configurato ancora',
     menu_all: 'Tutte le bevande',
+    order_failed: 'Impossibile inviare l\'ordine. Riprova.',
+    chart_pressure: 'Pressione',
+    chart_weight: 'Peso',
   },
   fr: {
     title: 'Commander',
@@ -111,6 +120,9 @@ export const STRINGS: Record<string, Record<string, StringEntry>> = {
     loading: 'Chargement …',
     no_menu: 'Aucun menu configuré pour le moment',
     menu_all: 'Toutes les boissons',
+    order_failed: 'La commande n\'a pas pu être envoyée. Veuillez réessayer.',
+    chart_pressure: 'Pression',
+    chart_weight: 'Poids',
   },
   es: {
     title: 'Pedir',
@@ -138,6 +150,9 @@ export const STRINGS: Record<string, Record<string, StringEntry>> = {
     loading: 'Cargando …',
     no_menu: 'Aún no hay menú configurado',
     menu_all: 'Todas las bebidas',
+    order_failed: 'No se pudo enviar el pedido. Inténtalo de nuevo.',
+    chart_pressure: 'Presión',
+    chart_weight: 'Peso',
   },
   nl: {
     title: 'Bestellen',
@@ -165,6 +180,9 @@ export const STRINGS: Record<string, Record<string, StringEntry>> = {
     loading: 'Laden …',
     no_menu: 'Nog geen menu ingesteld',
     menu_all: 'Alle drankjes',
+    order_failed: 'Bestelling kon niet worden verzonden. Probeer het opnieuw.',
+    chart_pressure: 'Druk',
+    chart_weight: 'Gewicht',
   },
 };
 

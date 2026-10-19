@@ -48,6 +48,7 @@ class GlpOrderCard extends HTMLElement {
   declare _lastShot: Shot | null;
   declare _pollTimer: ReturnType<typeof setTimeout> | null;
   declare _submitting: boolean;
+  declare _orderError: string | null;
   declare _queueEta: QueueEta | null;
   declare _hassRenderTimer: ReturnType<typeof setTimeout> | null;
   declare _lang: string;
@@ -69,11 +70,18 @@ class GlpOrderCard extends HTMLElement {
     this._lastShot  = null;
     this._pollTimer = null;
     this._submitting = false;
+    this._orderError = null;
     this._queueEta        = null;
     this._hassRenderTimer = null;
-    this._lang = navigator.language.slice(0,2).toLowerCase();
-    if (!STRINGS[this._lang]) this._lang = 'en';
+    this._lang = this._normalizeLang(navigator.language);
     this._instanceId = ++_glpOrderCardInstanceSeq;
+  }
+
+  // First two letters, lower case, falling back to English for a language this
+  // card has no strings for.
+  _normalizeLang(code: string | null | undefined): string {
+    const lang = String(code || '').slice(0, 2).toLowerCase();
+    return STRINGS[lang] ? lang : 'en';
   }
 
   setConfig(config: CardConfig): void {
@@ -243,6 +251,7 @@ class GlpOrderCard extends HTMLElement {
   set hass(hass: Hass) {
     const firstHass = !this._hass;
     this._hass = hass;
+    this._lang = this._normalizeLang(hass?.language);
     if (firstHass && this._menu === null) {
       this._load();
     } else {
@@ -266,10 +275,13 @@ class GlpOrderCard extends HTMLElement {
   _schedulePoll() {
     if (this._pollTimer) clearTimeout(this._pollTimer);
     const hasActive = this._activeOrder?.status === 'pending' || this._activeOrder?.status === 'accepted';
-    this._pollTimer = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       await this._loadStatus();
-      this._schedulePoll();
+      // _stopPoll() nulls the timer while _loadStatus() is in flight (the card
+      // was disconnected mid-poll); don't re-arm a timer for a detached card.
+      if (this.isConnected && this._pollTimer === timer) this._schedulePoll();
     }, hasActive ? 3000 : 10000);
+    this._pollTimer = timer;
   }
   _stopPoll() {
     if (this._pollTimer) { clearTimeout(this._pollTimer); this._pollTimer = null; }
@@ -353,26 +365,54 @@ class GlpOrderCard extends HTMLElement {
       } catch { /* transient poll failure, keep last known enabled state */ }
     }
     try {
-      const orders = await this._fetch(`api/orders/mine?haUserId=${encodeURIComponent(haUser.id)}`).then(r => r.json()) as Order[];
+      const res = await this._fetch(`api/orders/mine?haUserId=${encodeURIComponent(haUser.id)}`);
+      if (!res.ok) throw new Error('orders/mine failed');
+      const body = await res.json();
+      if (!Array.isArray(body)) throw new Error('orders/mine returned a non-array body');
+      const orders = body as Order[];
       const active = orders.find(o => ['pending','accepted'].includes(o.status));
       const recent = !active ? orders.find(o => ['done','declined'].includes(o.status) && o.id !== this._dismissedOrderId && (Date.now() - (o.completedAt||0)) < 120000) : null;
       this._activeOrder = active || recent || null;
-      if (this._activeOrder?.status === 'done' && !this._lastShot) {
-        try {
-          const shotId = this._activeOrder.shotId;
-          const path = shotId ? `api/shots/${encodeURIComponent(shotId)}` : 'api/shots/last';
-          this._lastShot = await this._fetch(path).then(r => r.json()) as Shot;
-        } catch { this._lastShot = null; }
-      } else if (!this._activeOrder || this._activeOrder.status !== 'done') {
+      if (this._activeOrder?.status === 'done') {
+        // Without a shotId there is nothing this customer's order can point
+        // at; api/shots/last would show whoever pulled the last shot.
+        const shotId = this._activeOrder.shotId;
+        if (!shotId) {
+          this._lastShot = null;
+        } else if (!this._lastShot) {
+          try {
+            const shotRes = await this._fetch(`api/shots/${encodeURIComponent(shotId)}`);
+            this._lastShot = shotRes.ok ? await shotRes.json() as Shot : null;
+          } catch { this._lastShot = null; }
+        }
+      } else {
         this._lastShot = null;
       }
-    } catch { this._activeOrder = null; this._lastShot = null; }
+    } catch {
+      // Transient failure: keep the order and shot already on screen instead
+      // of falling back to the menu and inviting a duplicate order.
+    }
     this._render();
   }
 
+  // Companion entity convention from the GaggiMate setup: the machine-status
+  // sensor `sensor.<prefix>machine_status` comes with a
+  // `binary_sensor.<prefix>machine_standby` that glp-lovelace-card's
+  // _isMachineOff() treats as off. A missing entity keeps the old behaviour.
+  _standbyEntity(): string | null {
+    const status = this._findMachineStatusEntity();
+    if (!status) return null;
+    return status
+      .replace(/^sensor\./, 'binary_sensor.')
+      .replace(/_machine_status$/, '_machine_standby');
+  }
+
   _machineOff(): boolean {
+    if (!this._hass) return false;
+    const standby = this._standbyEntity();
+    if (standby && this._hass.states[standby]?.state === 'on') return true;
     const entity = this._getSwitchEntity();
-    if (!entity || !this._hass) return false;
+    if (!entity) return false;
     const s = this._hass.states[entity];
     return s?.state === 'off' || s?.state === 'unavailable';
   }
@@ -565,10 +605,10 @@ class GlpOrderCard extends HTMLElement {
       const trendBadge = m.trending
         ? html`<span class="menu-badge menu-badge-trend">${/* ICONS.of() emits fixed SVG markup */ unsafeHTML(ICONS.of('heat'))}</span>`
         : nothing;
-      return html`<div class="menu-item${this._selected === m.name ? ' selected' : ''}" data-item=${m.name} @click=${() => this._selectItem(m.name)}>
+      return html`<button type="button" class="menu-item${this._selected === m.name ? ' selected' : ''}" data-item=${m.name} @click=${() => this._selectItem(m.name)}>
         <div class="menu-item-icon">${/* _menuIconHtml() returns a fixed icon or an escaped emoji */ unsafeHTML(_menuIconHtml(m))}</div>
         <div class="menu-item-name">${m.name}${trendBadge}${newBadge}</div>
-      </div>`;
+      </button>`;
     };
 
     const trending = visibleMenu.filter(m => m.trending);
@@ -605,20 +645,21 @@ class GlpOrderCard extends HTMLElement {
         <button class="order-btn" id="oc-submit" ?disabled=${!this._selected || this._submitting || needsVariant} @click=${() => this._placeOrder()}>
           ${itemLabel ? html`${/* ICONS.of() emits fixed SVG markup */ unsafeHTML(ICONS.of('coffee'))} ` : nothing}${btnLabel}
         </button>
+        ${this._orderError ? html`<div class="order-error" role="alert">${this._orderError}</div>` : nothing}
       </div>`;
   }
 
-  _shotChart(shot: Shot): string {
+  _shotChart(shot: Shot, lang: string = 'en'): string {
     const dp = shot?.datapoints;
     if (!dp) return '';
 
     // Series colors: the GLP-series palette (glp-card.js's buildShotChart(),
     // kept in sync via GLP-TOKENS' --glp-series-* fallback values).
     const series: ShotSeries[] = [
-      { key: 'pressure',    scale: 10, axis: 'left',  color: 'var(--glp-series-pres, #0072b2)',   label: 'Druck' },
+      { key: 'pressure',    scale: 10, axis: 'left',  color: 'var(--glp-series-pres, #0072b2)',   label: _s('chart_pressure', lang) },
       { key: 'temperature', scale: 10, axis: 'right', color: 'var(--glp-series-temp, #c0392b)',   label: 'Temp' },
       { key: 'weightFlow',  scale: 10, axis: 'left',  color: 'var(--glp-series-flow, #c77000)',   label: 'Flow' },
-      { key: 'shotWeight',  scale: 10, axis: 'right', color: 'var(--glp-series-weight, #009e73)', label: 'Gewicht' },
+      { key: 'shotWeight',  scale: 10, axis: 'right', color: 'var(--glp-series-weight, #009e73)', label: _s('chart_weight', lang) },
     ].map(s => ({ ...s, vals: Array.isArray(dp[s.key]) ? (dp[s.key] as number[]).map(v => v / s.scale) : [] }))
      .filter(s => s.vals.length >= 4);
 
@@ -662,14 +703,14 @@ class GlpOrderCard extends HTMLElement {
     return svg + legend;
   }
 
-  _renderShotSummary(shot: Shot | null | undefined, _lang: string): TemplateResult | typeof nothing {
+  _renderShotSummary(shot: Shot | null | undefined, lang: string): TemplateResult | typeof nothing {
     if (!shot) return nothing;
     const profile  = shot.profile?.name || shot.profileName || '–';
     const dur      = shot.duration ? `${(shot.duration / 10).toFixed(0)} s` : null;
     const wtArr    = shot.datapoints?.shotWeight || shot.datapoints?.weight;
     const yield_g  = Array.isArray(wtArr) && wtArr.length ? `${(wtArr[wtArr.length - 1]! / 10).toFixed(1)} g` : null;
     const meta     = [dur, yield_g].filter(Boolean).join(' · ');
-    const chart    = this._shotChart(shot);
+    const chart    = this._shotChart(shot, lang);
     return html`<div class="shot-summary">
       <div class="shot-summary-profile">${profile}</div>
       ${meta ? html`<div class="shot-summary-meta">${meta}</div>` : nothing}
@@ -728,6 +769,7 @@ class GlpOrderCard extends HTMLElement {
     const prev = this._selected;
     this._selected = this._selected === name ? null : name;
     if (this._selected !== prev) { this._selectedVariant = null; this._selectedBeanId = null; }
+    this._orderError = null;
     this._render();
   }
 
@@ -735,6 +777,7 @@ class GlpOrderCard extends HTMLElement {
     const wasSelected = this._selectedVariant === variant;
     this._selectedVariant = wasSelected ? null : variant;
     this._selectedBeanId  = wasSelected ? null : (beanId != null ? Number(beanId) : null);
+    this._orderError = null;
     this._render();
   }
 
@@ -744,13 +787,16 @@ class GlpOrderCard extends HTMLElement {
     this._selected        = null;
     this._selectedVariant = null;
     this._selectedBeanId  = null;
+    this._orderError      = null;
     this._render();
   }
 
   _getVariants(item: MenuItem | undefined): string[] {
     if (!item) return [];
     if (item.useBeans) return (this._activeBeans || []).map(b => b.decaf ? `${b.name} · Decaf` : b.name);
-    return item.variants || [];
+    return Array.isArray(item.variants)
+      ? item.variants.filter((v): v is string => typeof v === 'string')
+      : [];
   }
 
   // Second, orthogonal grouping axis on top of _getVariants() (#36): non-bean
@@ -779,7 +825,7 @@ class GlpOrderCard extends HTMLElement {
 
   _variantChipHtml(v: string): TemplateResult {
     const beanId = this._beanIdForLabel(v);
-    return html`<div class="variant-chip${this._selectedVariant === v ? ' selected' : ''}" data-variant=${v} data-bean-id=${ifDefined(beanId ?? undefined)} @click=${() => this._selectVariant(v, beanId)}>${v}</div>`;
+    return html`<button type="button" class="variant-chip${this._selectedVariant === v ? ' selected' : ''}" data-variant=${v} data-bean-id=${ifDefined(beanId ?? undefined)} @click=${() => this._selectVariant(v, beanId)}>${v}</button>`;
   }
 
   // Mirrors the trending/regular section pattern (~line 650): headings shown
@@ -837,7 +883,7 @@ class GlpOrderCard extends HTMLElement {
     this._render();
 
     try {
-      const order = await this._fetch('api/orders', {
+      const res = await this._fetch('api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -852,15 +898,22 @@ class GlpOrderCard extends HTMLElement {
           haUserId: haUser.id,
           machine:  this._config?.machine || undefined,
         }),
-      }).then(r => r.json()) as Order;
+      });
+      const order = res.ok ? await res.json() as Order : null;
 
-      if (order.id) {
+      if (order?.id) {
         this._activeOrder = order;
+        this._orderError  = null;
         this._selected    = null;
         this._selectedVariant = null;
         this._selectedBeanId  = null;
+      } else {
+        // Keep the selection so the customer can retry without re-picking.
+        this._orderError = _s('order_failed', this._lang);
       }
-    } catch { /* network/API failure: silently falls back to the order form via _submitting reset below */ }
+    } catch {
+      this._orderError = _s('order_failed', this._lang);
+    }
     this._submitting = false;
     this._render();
   }

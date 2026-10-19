@@ -238,6 +238,15 @@ export const STYLES: string = `
     gap: var(--glp-sp-3);
     margin-bottom: var(--glp-sp-4);
   }
+  /* Menu tiles and variant chips are <button>s now (#183) so they are
+     keyboard/screen-reader reachable; these resets keep the tile look the
+     plain <div> had before. */
+  .menu-item, .variant-chip {
+    font: inherit;
+    color: inherit;
+    text-align: inherit;
+    appearance: none;
+  }
   .menu-item {
     background: var(--oc-surface);
     border: 1px solid var(--oc-border);
@@ -358,6 +367,14 @@ export const STYLES: string = `
   }
   .new-order-btn:hover { border-color: color-mix(in srgb, var(--oc-text) 22%, transparent); color: var(--oc-text); background: color-mix(in srgb, var(--oc-text) 7%, transparent); }
   .loading { color: var(--oc-sub); font-size: var(--glp-fs-2); text-align: center; padding: var(--glp-sp-5) 0; }
+
+  /* Failed order attempt (#183): the selection stays so the customer can retry. */
+  .order-error {
+    color: var(--oc-error, #ff453a);
+    font-size: var(--glp-fs-1);
+    line-height: 1.4;
+    text-align: center;
+  }
 
   /* Variant picker */
   .variant-label { font-size: var(--glp-fs-1); font-weight: 600; color: var(--oc-sub); margin: var(--glp-sp-1) 0 var(--glp-sp-2); }

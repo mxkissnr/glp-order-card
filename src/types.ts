@@ -14,6 +14,7 @@ export interface HassUser {
 export interface Hass {
   states: Record<string, HassStateObject>;
   user?: HassUser;
+  language?: string;
   fetchWithAuth?: (path: string, init?: RequestInit) => Promise<Response>;
 }
 
