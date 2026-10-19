@@ -43,47 +43,52 @@ function makeStatusCard(fetchImpl) {
 
 // --- 1. no zombie poll -------------------------------------------------------
 
-test('_schedulePoll() does not re-arm after the card disconnected mid-poll', async () => {
+// Lets the timer callback's `await this._loadStatus()` continuation run.
+async function flushMicrotasks() {
+  for (let i = 0; i < 5; i++) await Promise.resolve();
+}
+
+test('_schedulePoll() does not re-arm after the card disconnected mid-poll', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
   const card = makeCard();
-  Object.defineProperty(card, 'isConnected', { value: true, configurable: true });
-  card._loadStatus = async () => {};
+  let polls = 0;
+  card._loadStatus = async () => {
+    polls += 1;
+    card._stopPoll(); // disconnectedCallback() while the request is in flight
+  };
 
-  const realSetTimeout = globalThis.setTimeout;
-  let callback = null;
-  let scheduled = 0;
-  globalThis.setTimeout = (cb) => { scheduled += 1; callback = callback || cb; return 100 + scheduled; };
-  try {
-    card._pollTimer = null;
-    card._schedulePoll();
-    card._stopPoll(); // disconnectedCallback()
-    Object.defineProperty(card, 'isConnected', { value: false, configurable: true });
-    await callback();
-  } finally {
-    globalThis.setTimeout = realSetTimeout;
-  }
+  card._pollTimer = null;
+  card._schedulePoll();
+  t.mock.timers.tick(10000);
+  await flushMicrotasks();
+  assert.equal(polls, 1);
 
-  assert.equal(scheduled, 1, 'a detached card must not schedule another poll');
+  // Any re-armed timer would fire on this tick and poll again.
+  t.mock.timers.tick(10000);
+  await flushMicrotasks();
+
+  assert.equal(polls, 1, 'a detached card must not schedule another poll');
   assert.equal(card._pollTimer, null);
 });
 
-test('_schedulePoll() keeps polling while the card stays connected', async () => {
+test('_schedulePoll() keeps polling while the card stays connected', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
   const card = makeCard();
   Object.defineProperty(card, 'isConnected', { value: true, configurable: true });
-  card._loadStatus = async () => {};
+  let polls = 0;
+  card._loadStatus = async () => { polls += 1; };
 
-  const realSetTimeout = globalThis.setTimeout;
-  let callback = null;
-  let scheduled = 0;
-  globalThis.setTimeout = (cb) => { scheduled += 1; callback = callback || cb; return 100 + scheduled; };
-  try {
-    card._pollTimer = null;
-    card._schedulePoll();
-    await callback();
-  } finally {
-    globalThis.setTimeout = realSetTimeout;
-  }
+  card._pollTimer = null;
+  card._schedulePoll();
+  t.mock.timers.tick(10000);
+  await flushMicrotasks();
+  assert.equal(polls, 1);
 
-  assert.equal(scheduled, 2);
+  t.mock.timers.tick(10000);
+  await flushMicrotasks();
+  assert.equal(polls, 2);
+
+  card._stopPoll();
 });
 
 // --- 2. keep the pending order on errors -------------------------------------
