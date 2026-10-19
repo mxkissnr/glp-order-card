@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### Fixed
+- **A pending order no longer disappears after a brief connection error, a failed order now shows a message, and a machine in standby counts as off.** Closes #183
 
 ## [1.22.0] – 2026-10-08
 ### Fixed
