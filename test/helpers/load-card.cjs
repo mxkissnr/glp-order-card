@@ -25,4 +25,27 @@ function loadCard({ expose = [], context = {} } = {}) {
   return result;
 }
 
-module.exports = { loadCard };
+// Machine-entity fixture for _machineOff()/_getSwitchEntity() tests (#183).
+// The app exposes `sensor.<prefix>machine_status`, carrying the optional
+// switch entity in its attributes, and GaggiMate setups add the companion
+// `binary_sensor.<prefix>machine_standby` the card treats as off.
+function makeMachineHass({ prefix = 'gaggiuino_local_profiler', standby, switchState, switchEntity } = {}) {
+  const states = {
+    [`sensor.${prefix}_machine_status`]: {
+      state: 'idle',
+      attributes: {
+        friendly_name: 'Gaggiuino Machine Status',
+        ...(switchEntity ? { switch_entity: switchEntity } : {}),
+      },
+    },
+  };
+  if (standby != null) {
+    states[`binary_sensor.${prefix}_machine_standby`] = { state: standby, attributes: {} };
+  }
+  if (switchEntity && switchState != null) {
+    states[switchEntity] = { state: switchState, attributes: {} };
+  }
+  return { states };
+}
+
+module.exports = { loadCard, makeMachineHass };

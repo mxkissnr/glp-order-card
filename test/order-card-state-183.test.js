@@ -7,7 +7,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { Window } = require('happy-dom');
-const { loadCard } = require('./helpers/load-card.cjs');
+const { loadCard, makeMachineHass } = require('./helpers/load-card.cjs');
 
 const window = new Window();
 window.customElements.define('home-assistant', class extends window.HTMLElement {});
@@ -161,51 +161,31 @@ test('_selectItem() clears the failed-order message when the selection changes',
 
 // --- 4. standby counts as off ------------------------------------------------
 
-function machineCard(states, config = {}) {
+function machineCard(hass, config = {}) {
   const card = makeCard();
   card._config = config;
-  card._hass = { states };
+  card._hass = hass;
   return card;
 }
 
 test('_machineOff() returns true when the machine standby entity is on', () => {
-  const card = machineCard({
-    'sensor.gaggiuino_local_profiler_machine_status': {
-      state: 'idle', attributes: { friendly_name: 'Gaggiuino Machine Status' },
-    },
-    'binary_sensor.gaggiuino_local_profiler_machine_standby': { state: 'on', attributes: {} },
-  });
+  const card = machineCard(makeMachineHass({ standby: 'on' }));
   assert.equal(card._machineOff(), true);
 });
 
 test('_machineOff() works without a switch entity when standby is on', () => {
-  const card = machineCard({
-    'sensor.gaggiuino_local_profiler_machine_status': {
-      state: 'idle', attributes: { friendly_name: 'Gaggiuino Machine Status' },
-    },
-    'binary_sensor.gaggiuino_local_profiler_machine_standby': { state: 'on', attributes: {} },
-  });
+  const card = machineCard(makeMachineHass({ standby: 'on' }));
   assert.equal(card._getSwitchEntity(), null);
   assert.equal(card._machineOff(), true);
 });
 
 test('_machineOff() falls back to the switch entity when no standby entity exists', () => {
-  const card = machineCard({
-    'sensor.gaggiuino_local_profiler_machine_status': {
-      state: 'idle', attributes: { friendly_name: 'Gaggiuino Machine Status', switch_entity: 'switch.gaggiuino' },
-    },
-    'switch.gaggiuino': { state: 'off', attributes: {} },
-  });
+  const card = machineCard(makeMachineHass({ switchEntity: 'switch.gaggiuino', switchState: 'off' }));
   assert.equal(card._machineOff(), true);
 });
 
 test('_machineOff() is false while the standby entity is off and no switch says off', () => {
-  const card = machineCard({
-    'sensor.gaggiuino_local_profiler_machine_status': {
-      state: 'idle', attributes: { friendly_name: 'Gaggiuino Machine Status' },
-    },
-    'binary_sensor.gaggiuino_local_profiler_machine_standby': { state: 'off', attributes: {} },
-  });
+  const card = machineCard(makeMachineHass({ standby: 'off' }));
   assert.equal(card._machineOff(), false);
 });
 

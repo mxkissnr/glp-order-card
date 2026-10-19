@@ -72,3 +72,20 @@ test('a pending order with the dismissed id is still shown', async () => {
   await inst._loadStatus(true);
   assert.equal(inst._activeOrder?.id, 'o1');
 });
+
+// #183: a transient poll failure now keeps the last known state instead of
+// falling back to the menu — after a dismissal there is nothing to keep, so
+// the dismissed order must stay dismissed and the menu stays visible.
+test('a transient poll error does not bring a dismissed order back', async () => {
+  const inst = makeInstance([
+    { id: 'o1', status: 'declined', completedAt: Date.now() - 10000 },
+  ]);
+  await inst._loadStatus(true);
+  assert.equal(inst._activeOrder?.id, 'o1');
+
+  inst._newOrder();
+  inst._fetch = () => Promise.resolve({ ok: false, json: async () => [] });
+
+  await inst._loadStatus(true);
+  assert.equal(inst._activeOrder, null);
+});
