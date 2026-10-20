@@ -2,6 +2,9 @@
   <img src="logo.svg" alt="GLP Order Card" width="660"/>
 </p>
 
+> [!IMPORTANT]
+> **This repository is archived.** The GLP Order Card moved into [glp-integration](https://github.com/mxkissnr/glp-integration) (`cards/order/`) and ships with the integration: install the integration and add `type: custom:glp-order-card` to a dashboard, no separate card install needed. Open issues were transferred there; please report new ones there too.
+
 <p align="center">
   <a href="https://github.com/mxkissnr/glp-order-card/releases">
     <img src="https://img.shields.io/github/v/tag/mxkissnr/glp-order-card?color=%23f59e0b&label=Version&style=flat-square" alt="Version"/>
