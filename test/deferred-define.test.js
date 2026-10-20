@@ -8,9 +8,12 @@
 // the native registry the shim can't see, so Lovelace shows "Custom element
 // doesn't exist: glp-order-card".
 //
-// Loads the real, unmodified glp-order-card.js into a vm context backed by a
-// fake registry, then swaps the registry mid-flight to reproduce that
-// cold-load sequence.
+// Loads the real, unmodified glp-order-card.js (the committed bundle) into a
+// node:vm context whose `customElements` is a fake registry, then swaps the
+// registry mid-flight to reproduce that cold-load sequence. This is the one
+// test that still needs `vm`: it must replace the global the card read at load
+// time, which the shared test/helpers/load-card.cjs harness (a direct import
+// of src/ in Node's own realm) cannot do.
 'use strict';
 
 const test = require('node:test');
