@@ -134,8 +134,8 @@ test('a concurrent hass update does not reset an in-progress variant selection',
       chip.click();
     });
 
-    // Wait past both the 300ms click-block window and the 1s hass-render
-    // debounce so any deferred/eventual re-render has had a chance to fire.
+    // Wait past the 1s hass-render debounce so the deferred re-render has
+    // had a chance to fire.
     await page.waitForTimeout(1500);
 
     const state = await page.evaluate(() => {

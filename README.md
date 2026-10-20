@@ -127,7 +127,7 @@ The barista manages orders from the **Bestellungen** tab in the GLP web UI.
 
 ## Languages
 
-Auto-detected from the browser locale. Currently supported: 🇩🇪 DE, 🇬🇧 EN, 🇮🇹 IT, 🇫🇷 FR, 🇪🇸 ES, 🇳🇱 NL. Any other locale falls back to English.
+Detected from the language of the logged-in Home Assistant user (`hass.language`); before Home Assistant is available the browser locale (`navigator.language`) is used. Only the first two letters of the code are read, so regional variants such as `de-CH` and `en-GB` work. Currently supported: 🇩🇪 DE, 🇬🇧 EN, 🇮🇹 IT, 🇫🇷 FR, 🇪🇸 ES, 🇳🇱 NL. Any other language falls back to English.
 
 ---
 
@@ -143,7 +143,7 @@ Auto-detected from the browser locale. Currently supported: 🇩🇪 DE, 🇬�
 
 ## License
 
-GPL-3.0 © 2024–2026 mxkissnr — free to use, fork and modify; any derivative work must remain open source under the same license. Commercial use is not permitted.
+GPL-3.0 © 2024–2026 mxkissnr — free to use, fork and modify; any derivative work must remain open source under the same license.
 
 ## Acknowledgements
 
