@@ -19,10 +19,9 @@ function makeStyleStub() {
 
 const { GlpOrderCard } = loadCard();
 
-// assert.deepEqual chokes on plain objects created inside the vm context
-// (different realm, so `instanceof Object`/prototype identity checks used by
-// the strict assert module fail even though the shape matches) — compare
-// the {a,b} fields individually instead.
+// assert.deepEqual also compares prototypes, which trips on the freshly built
+// {a,b} objects even when their shape matches — compare the fields individually
+// instead.
 function assertThemePair(actual, a, b) {
   assert.equal(actual?.a, a);
   assert.equal(actual?.b, b);

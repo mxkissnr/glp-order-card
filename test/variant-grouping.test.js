@@ -16,11 +16,9 @@ function makeInstance({ activeBeans } = {}) {
   return inst;
 }
 
-// Arrays/objects returned from the vm-sandboxed module live in a different
-// realm than this test file's own Array/Object, which makes assert.deepEqual
-// (strict, prototype-sensitive) report false mismatches even on identical
-// values. Round-tripping through JSON normalizes both sides to this realm's
-// plain objects.
+// _getVariantsGrouped() returns freshly built arrays/objects; round-tripping
+// through JSON normalizes them to plain data for the prototype-sensitive
+// assert.deepEqual comparisons below.
 function plain(x) { return JSON.parse(JSON.stringify(x)); }
 
 test('_getVariantsGrouped() returns a flat list for non-bean items (no category concept)', () => {

@@ -3,6 +3,8 @@
 ## [Unreleased]
 ### Fixed
 - **A pending order no longer disappears after a brief connection error, a failed order now shows a message, and a machine in standby counts as off.** Closes #183
+### Documentation
+- **The documentation now describes how the card picks its language and shows the current licence wording.** Closes #185
 
 ## [1.22.0] – 2026-10-08
 ### Fixed

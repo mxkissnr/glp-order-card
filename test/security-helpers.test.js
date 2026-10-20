@@ -10,10 +10,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { loadCard } = require('./helpers/load-card.cjs');
 
-// #114: glp-order-card.js is wrapped in an IIFE to avoid a top-level const
-// collision with the bundled glp-card.js, so _esc()/_safeUrl() no longer
-// auto-attach to the sandbox's global object — the shared helper exposes them
-// explicitly for this test, same injection approach as __GlpOrderCard elsewhere.
+// #114: the card ships as an IIFE bundle, so _esc()/_safeUrl() are not
+// reachable as page globals. loadCard() returns the module exports the test
+// asks for, so these assertions run against the shipped implementations.
 const { _esc: esc, _safeUrl: safeUrl } = loadCard({ expose: ['_esc', '_safeUrl'] });
 
 test('_esc() escapes HTML special characters', () => {

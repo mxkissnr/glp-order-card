@@ -187,7 +187,8 @@ export const STRINGS: Record<string, Record<string, StringEntry>> = {
 };
 
 // Interpolates ...args raw into the translation string — NOT escaped here.
-// Every call site must wrap the result in _esc() before it reaches innerHTML.
+// Call sites pass the result to a Lit template, which escapes it before it
+// reaches the DOM. Falls back to the English table, then to the key itself.
 export function _s(key: string, lang: string, ...args: string[]): string {
   const tr = STRINGS[lang] || STRINGS.en!;
   const val: StringEntry = tr[key] ?? STRINGS.en![key] ?? key;
