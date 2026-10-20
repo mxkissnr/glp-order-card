@@ -52,11 +52,10 @@ const fakeDocument = {
   createTreeWalker() { return {}; },
 };
 
-// The shared helper injects the real `class GlpOrderCard` reference after the
-// customElements.define() anchor — a lexical class declaration never becomes a
-// property of the vm context's global object the way a `function` declaration
-// would — so it can be reused as-is. The registry-capturing customElements stub
-// is kept so define() still sees the real class.
+// loadCard() installs the stubs above as globals, imports the card module and
+// returns its real `class GlpOrderCard` export, so it can be reused as-is. The
+// registry-capturing customElements stub is kept so define() still sees the
+// real class.
 const registry = { 'home-assistant': class extends HTMLElement {} };
 const { GlpOrderCard } = loadCard({
   context: {
